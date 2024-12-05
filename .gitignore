@@ -1,0 +1,7 @@
+config.js
+grapheme-splitter.js
+
+*.txt
+*.json
+*.csv
+*.xlsx
