@@ -5,3 +5,5 @@ grapheme-splitter.js
 *.json
 *.csv
 *.xlsx
+
+!common-words.txt

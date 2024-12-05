@@ -16,6 +16,10 @@ if (process.argv.length < 3) {
 // read the chat file
 const IMPORT_FILE = process.argv[2];
 
+// create an output directory to store the results
+const outputDir = "output";
+require("fs").mkdirSync(outputDir, { recursive: true });
+
 const chat = require("fs")
     .readFileSync(IMPORT_FILE, "utf8")
     .replace(/[\u202f\u200e]/g, " ")
@@ -27,6 +31,14 @@ const commonWords = new Set(
         .split("\n")
         .map((w) => w.toLowerCase())
 );
+
+// create an output file stream to write the results
+const output = require("fs").createWriteStream(`${outputDir}/results.txt`, { flags: "w" });
+
+function outputLine(line = "") {
+    console.log(line);
+    output.write(line + "\n");
+}
 
 // Determine the format of the export file (the export differs between Android and iOS)
 // 1 = 3/9/23, 14:29 - Name: Message
@@ -140,7 +152,7 @@ if (currentMessage) {
 
 // save messages as array of text only
 require("fs").writeFileSync(
-    "messages-text.json",
+    `${outputDir}/messages-text.json`,
     JSON.stringify(
         messages.map((m) => m.text),
         null,
@@ -160,11 +172,11 @@ messages.forEach((message) => {
 let top = Object.entries(messagesPerSender)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top senders:`);
+outputLine(`Top senders:`);
 for (const [sender, count] of top) {
-    console.log(`${sender} - ${count} messages`);
+    outputLine(`${sender} - ${count} messages`);
 }
-console.log();
+outputLine();
 
 // Top media senders
 const mediaPerSender = {};
@@ -184,11 +196,11 @@ messages.forEach((message, i) => {
 top = Object.entries(mediaPerSender)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top media senders:`);
+outputLine(`Top media senders:`);
 for (const [sender, count] of top) {
-    console.log(`${sender} - ${count} messages with media`);
+    outputLine(`${sender} - ${count} messages with media`);
 }
-console.log("\nTotal messages with media:", totalMedia, "\n");
+outputLine("\nTotal messages with media:", totalMedia, "\n");
 
 // Top question askers
 const questionsPerSender = {};
@@ -256,11 +268,11 @@ top = Object.entries(questionsPerSender)
     .sort((a, b) => b[1] - a[1])
     .filter((a) => a[1] > 0)
     .slice(0, TOP_COUNT);
-console.log(`Top question askers:`);
+outputLine(`Top question askers:`);
 for (const [sender, count] of top) {
-    console.log(`${sender} - ${count} questions asked`);
+    outputLine(`${sender} - ${count} questions asked`);
 }
-console.log();
+outputLine();
 
 // Top taggers
 const tagsPerSender = {};
@@ -278,11 +290,11 @@ messages.forEach((message, i) => {
 top = Object.entries(tagsPerSender)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top taggers:`);
+outputLine(`Top taggers:`);
 for (const [sender, count] of top) {
-    console.log(`${sender} - ${count} tags sent`);
+    outputLine(`${sender} - ${count} tags sent`);
 }
-console.log();
+outputLine();
 
 // Top taggees
 const taggees = {};
@@ -301,22 +313,22 @@ messages.forEach((message) => {
 top = Object.entries(taggees)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top taggees:`);
+outputLine(`Top taggees:`);
 for (const [tag, count] of top) {
-    console.log(`${TAG_TO_NAME[tag] || tag} - tagged ${count} times`);
+    outputLine(`${TAG_TO_NAME[tag] || tag} - tagged ${count} times`);
 }
-console.log();
+outputLine();
 
 // Total messages
-console.log("Total messages:", messages.length, "\n");
+outputLine("Total messages:", messages.length, "\n");
 
 // Daily messages (average)
 const dailyMessages = messages.length / ((FILTERS.endDate - FILTERS.startDate) / (1000 * 60 * 60 * 24));
-console.log("Daily messages:", Math.round(dailyMessages * 100) / 100, "\n");
+outputLine("Daily messages:", Math.round(dailyMessages * 100) / 100, "\n");
 
 // Message senders
 const senders = new Set(messages.map((m) => m.sender));
-console.log("Message senders:", senders.size, "\n");
+outputLine("Message senders:", senders.size, "\n");
 
 // Most active hour of the day
 const messagesPerHour = {};
@@ -330,11 +342,11 @@ messages.forEach((message) => {
 top = Object.entries(messagesPerHour)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top active hours of the day:`);
+outputLine(`Top active hours of the day:`);
 for (const [hour, count] of top) {
-    console.log(`${hour}:00 - ${count} messages`);
+    outputLine(`${hour}:00 - ${count} messages`);
 }
-console.log();
+outputLine();
 
 // Most active day of the week
 const messagesPerDay = {};
@@ -346,12 +358,12 @@ messages.forEach((message) => {
 });
 // show top
 top = Object.entries(messagesPerDay).sort((a, b) => b[1] - a[1]);
-console.log(`Top active days of the week:`);
+outputLine(`Top active days of the week:`);
 for (const [day, count] of top) {
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    console.log(`${days[day]} - ${count} messages`);
+    outputLine(`${days[day]} - ${count} messages`);
 }
-console.log();
+outputLine();
 
 // Most active month of the year
 const messagesPerMonth = {};
@@ -363,7 +375,7 @@ messages.forEach((message) => {
 });
 // show top
 top = Object.entries(messagesPerMonth).sort((a, b) => b[1] - a[1]);
-console.log(`Top active months of the year:`);
+outputLine(`Top active months of the year:`);
 for (const [month, count] of top) {
     const months = [
         "January",
@@ -379,12 +391,12 @@ for (const [month, count] of top) {
         "November",
         "December",
     ];
-    console.log(`${months[month - 1]} - ${count} messages`);
+    outputLine(`${months[month - 1]} - ${count} messages`);
 }
-console.log();
+outputLine();
 
 // Members who joined
-console.log("Members who joined:", addedMembers.size, "\n");
+outputLine("Members who joined:", addedMembers.size, "\n");
 
 // Total number of words sent, average number of words per message, most common words
 let totalWords = 0;
@@ -421,26 +433,26 @@ messages.forEach((message) => {
     messagesWithWords++;
     totalWords += messageWords.length;
 });
-console.log("Total number of words sent:", totalWords, "\n");
-console.log("Average number of words per message:", Math.round((totalWords / messagesWithWords) * 100) / 100, "\n");
+outputLine("Total number of words sent:", totalWords, "\n");
+outputLine("Average number of words per message:", Math.round((totalWords / messagesWithWords) * 100) / 100, "\n");
 // show top
 top = Object.entries(words)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top words:`);
+outputLine(`Top words:`);
 for (const [word, count] of top) {
-    console.log(`${word} - ${count} times`);
+    outputLine(`${word} - ${count} times`);
 }
-console.log();
+outputLine();
 // show top uncommon
 top = Object.entries(uncommonWords)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top uncommon words:`);
+outputLine(`Top uncommon words:`);
 for (const [word, count] of top) {
-    console.log(`${word} - ${count} times`);
+    outputLine(`${word} - ${count} times`);
 }
-console.log();
+outputLine();
 
 // Top emoji senders, Most common emojis
 const emojiPerSender = {};
@@ -468,23 +480,23 @@ messages.forEach((message, i) => {
 top = Object.entries(emojiPerSender)
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, TOP_COUNT);
-console.log(`Top emoji senders:`);
+outputLine(`Top emoji senders:`);
 for (const [sender, emojis] of top) {
-    console.log(`${sender} - ${emojis.length} emojis`);
+    outputLine(`${sender} - ${emojis.length} emojis`);
 }
-console.log();
+outputLine();
 // show top emojis
 top = Object.entries(emojis)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-console.log(`Top emojis:`);
+outputLine(`Top emojis:`);
 for (const [emoji, count] of top) {
-    console.log(`${emoji} - ${count} times`);
+    outputLine(`${emoji} - ${count} times`);
 }
-console.log();
+outputLine();
 
 // save messages as json
-require("fs").writeFileSync("messages.json", JSON.stringify(messages, null, 4));
+require("fs").writeFileSync(`${outputDir}/messages.json`, JSON.stringify(messages, null, 4));
 
 // save messages as csv
 if (messages.length) {
@@ -505,5 +517,5 @@ if (messages.length) {
         }
         csv.push(row.join(","));
     }
-    require("fs").writeFileSync("messages.csv", csv.join("\n"));
+    require("fs").writeFileSync(`${outputDir}/messages.csv`, csv.join("\n"));
 }
