@@ -12,7 +12,6 @@ Create a summary of stats from a WhatsApp group export
     - Share the chat export to your computer
 2. Make sure `node` is installed on your computer (https://nodejs.org/)
 3. Copy `example.config.js` to `config.js` and fill in values as needed:
-    - Set `IMPORT_FILE` to the path of the exported chat file
     - Set `FILTERS.startDate` to contain the date you want to start counting messages from (ensure the year is correct)
     - Set `FILTERS.endDate` to contain the date you want to stop counting messages from
     - Set `TOP_COUNT` to the number of entries to show in the top lists
@@ -20,7 +19,13 @@ Create a summary of stats from a WhatsApp group export
 4. Run the following command in your terminal:
 
 ```bash
-node main.js
+node main.js 'path/to/WhatsApp Chat with Group Name.txt'
+```
+
+Replace the path with the path to the exported chat file. If, for example, the chat file is in the same directory as the script and is named `chat.txt`, you would run:
+
+```bash
+node main.js 'chat.txt'
 ```
 
 5. The script will output a summary of the chat to the terminal
