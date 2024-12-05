@@ -6,8 +6,7 @@ Create a summary of stats from a WhatsApp group export
 
 1. Export a WhatsApp group chat from the WhatsApp app on your phone:
     - Open the group chat
-    - Tap the group name at the top
-    - Scroll down and tap "Export chat"
+    - Tap the 3 dots at the top, then "More > Export chat"
     - Choose "Without media"
     - Share the chat export to your computer
 2. Make sure `node` is installed on your computer (https://nodejs.org/)
