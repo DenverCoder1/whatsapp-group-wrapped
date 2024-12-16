@@ -35,7 +35,11 @@ const commonWords = new Set(
 // create an output file stream to write the results
 const output = require("fs").createWriteStream(`${outputDir}/results.txt`, { flags: "w" });
 
-function outputLine(line = "") {
+/* 
+ * Take 1 or more args and print them to output and log them to console
+ */
+function outputLine(...args) {
+    const line = args.join(" ");
     console.log(line);
     output.write(line + "\n");
 }
