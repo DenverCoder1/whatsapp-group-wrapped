@@ -57,8 +57,6 @@ if (CHAT_FORMAT === 2) {
     startOfMessageRegex = /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
 }
 const messages = [];
-const deletedMessages = [];
-let allMessages = [];
 let currentMessage = null;
 const addedMembers = new Set();
 
@@ -79,13 +77,6 @@ function addMessage(message) {
         (!message.sender && message.text.includes("added"))
     ) {
         addedMembers.add(message.sender ?? message.text);
-        return;
-    }
-    if (
-        message.text === "null" || // deleted by admin
-        message.text.includes("This message was deleted")
-    ) {
-        deletedMessages.push(message);
         return;
     }
     if (
@@ -113,8 +104,11 @@ function addMessage(message) {
     ) {
         return;
     }
+    message.deleted = false;
+    // null if deleted by admin, "This message was deleted" if deleted by user
+    message.deleted = message.text === "null" || message.text === "This message was deleted";
+    // add non-deleted messages to messages
     messages.push(message);
-    allMessages = [...messages, ...deletedMessages];
 }
 
 for (const line of chat.split("\n")) {
@@ -180,7 +174,7 @@ require("fs").writeFileSync(
 
 // Top message senders
 const messagesPerSender = {};
-allMessages.forEach((message) => {
+messages.forEach((message) => {
     if (!messagesPerSender[message.sender]) {
         messagesPerSender[message.sender] = 0;
     }
@@ -338,25 +332,25 @@ for (const [tag, count] of top) {
 outputLine();
 
 // Total messages
-outputLine("Total messages:", allMessages.length, "\n");
+outputLine("Total messages:", messages.length, "\n");
 
 // Deleted messages
-outputLine("Total messages deleted:", deletedMessages.length, "\n");
+outputLine("Total messages deleted:", messages.filter((m) => m.deleted).length, "\n");
 
 // Messages deleted by admin
-outputLine("Total messages deleted by admin:", deletedMessages.filter((m) => m.text === "null").length, "\n");
+outputLine("Total messages deleted by admin:", messages.filter((m) => m.text === "null").length, "\n");
 
 // Daily messages (average)
-const dailyMessages = allMessages.length / ((FILTERS.endDate - FILTERS.startDate) / (1000 * 60 * 60 * 24));
+const dailyMessages = messages.length / ((FILTERS.endDate - FILTERS.startDate) / (1000 * 60 * 60 * 24));
 outputLine("Daily messages:", Math.round(dailyMessages * 100) / 100, "\n");
 
 // Message senders
-const senders = new Set(allMessages.map((m) => m.sender));
+const senders = new Set(messages.map((m) => m.sender));
 outputLine("Message senders:", senders.size, "\n");
 
 // Most active hour of the day
 const messagesPerHour = {};
-allMessages.forEach((message) => {
+messages.forEach((message) => {
     if (!messagesPerHour[message.hour]) {
         messagesPerHour[message.hour] = 0;
     }
@@ -374,7 +368,7 @@ outputLine();
 
 // Most active day of the week
 const messagesPerDay = {};
-allMessages.forEach((message) => {
+messages.forEach((message) => {
     if (!messagesPerDay[message.date.getDay()]) {
         messagesPerDay[message.date.getDay()] = 0;
     }
@@ -391,7 +385,7 @@ outputLine();
 
 // Most active month of the year
 const messagesPerMonth = {};
-allMessages.forEach((message) => {
+messages.forEach((message) => {
     if (!messagesPerMonth[message.month]) {
         messagesPerMonth[message.month] = 0;
     }
@@ -427,12 +421,11 @@ let totalWords = 0;
 let messagesWithWords = 0;
 const words = {};
 const uncommonWords = {};
-messages.forEach((message) => {
-    const ignore = ["This message was deleted", "<This message was edited>", "omitted"];
-    if (ignore.some((i) => message.text.includes(i))) {
+messages.filter((m) => !m.deleted).forEach((message) => {
+    if (message.text.includes("omitted")) {
         return;
     }
-    const messageWords = message.text.split(/\s+/);
+    const messageWords = message.text.replace(/\s+<This message was edited>/g, "").split(/\s+/);
     for (const word of messageWords) {
         // remove punctuation from either side of the word and make it lowercase
         const cleanWord = word
