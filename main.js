@@ -35,7 +35,7 @@ const commonWords = new Set(
 // create an output file stream to write the results
 const output = require("fs").createWriteStream(`${outputDir}/results.txt`, { flags: "w" });
 
-/* 
+/*
  * Take 1 or more args and print them to output and log them to console
  */
 function outputLine(...args) {
@@ -57,11 +57,15 @@ if (CHAT_FORMAT === 2) {
     startOfMessageRegex = /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
 }
 const messages = [];
+const deletedMessages = [];
+let allMessages = [];
 let currentMessage = null;
 const addedMembers = new Set();
+
 function regexEscape(str) {
     return str.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
+
 function addMessage(message) {
     if (message.date < FILTERS.startDate || message.date > FILTERS.endDate) {
         return;
@@ -78,6 +82,13 @@ function addMessage(message) {
         return;
     }
     if (
+        message.text === "null" || // deleted by admin
+        message.text.includes("This message was deleted")
+    ) {
+        deletedMessages.push(message);
+        return;
+    }
+    if (
         new RegExp(
             [
                 `${message.sender} left`,
@@ -90,6 +101,7 @@ function addMessage(message) {
                 `changed this group's settings`,
                 `deleted this group's icon`,
                 `deleted this group's description`,
+                `removed the group description`,
                 `turned on admin approval to join this group`,
                 `${message.sender} created this group`,
                 `Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.`,
@@ -102,7 +114,9 @@ function addMessage(message) {
         return;
     }
     messages.push(message);
+    allMessages = [...messages, ...deletedMessages];
 }
+
 for (const line of chat.split("\n")) {
     const match = startOfMessageRegex.exec(line);
     if (match) {
@@ -166,7 +180,7 @@ require("fs").writeFileSync(
 
 // Top message senders
 const messagesPerSender = {};
-messages.forEach((message) => {
+allMessages.forEach((message) => {
     if (!messagesPerSender[message.sender]) {
         messagesPerSender[message.sender] = 0;
     }
@@ -324,19 +338,25 @@ for (const [tag, count] of top) {
 outputLine();
 
 // Total messages
-outputLine("Total messages:", messages.length, "\n");
+outputLine("Total messages:", allMessages.length, "\n");
+
+// Deleted messages
+outputLine("Total messages deleted:", deletedMessages.length, "\n");
+
+// Messages deleted by admin
+outputLine("Total messages deleted by admin:", deletedMessages.filter((m) => m.text === "null").length, "\n");
 
 // Daily messages (average)
-const dailyMessages = messages.length / ((FILTERS.endDate - FILTERS.startDate) / (1000 * 60 * 60 * 24));
+const dailyMessages = allMessages.length / ((FILTERS.endDate - FILTERS.startDate) / (1000 * 60 * 60 * 24));
 outputLine("Daily messages:", Math.round(dailyMessages * 100) / 100, "\n");
 
 // Message senders
-const senders = new Set(messages.map((m) => m.sender));
+const senders = new Set(allMessages.map((m) => m.sender));
 outputLine("Message senders:", senders.size, "\n");
 
 // Most active hour of the day
 const messagesPerHour = {};
-messages.forEach((message) => {
+allMessages.forEach((message) => {
     if (!messagesPerHour[message.hour]) {
         messagesPerHour[message.hour] = 0;
     }
@@ -354,7 +374,7 @@ outputLine();
 
 // Most active day of the week
 const messagesPerDay = {};
-messages.forEach((message) => {
+allMessages.forEach((message) => {
     if (!messagesPerDay[message.date.getDay()]) {
         messagesPerDay[message.date.getDay()] = 0;
     }
@@ -371,7 +391,7 @@ outputLine();
 
 // Most active month of the year
 const messagesPerMonth = {};
-messages.forEach((message) => {
+allMessages.forEach((message) => {
     if (!messagesPerMonth[message.month]) {
         messagesPerMonth[message.month] = 0;
     }
