@@ -265,11 +265,13 @@ messages.forEach((message, i) => {
         "has",
         "have",
         "had",
+        "poll:",
     ];
     const hasQuestion =
         /\?(?:\s|$)/.test(message.text) ||
         new RegExp(questionPhrases.map(regexEscape).join("|")).test(message.text) ||
-        questionIfFirstWord.some((w) => message.text.toLowerCase().startsWith(w + " "));
+        questionIfFirstWord.some((w) => new RegExp(`^${w}\\s`, "i").test(message.text)) ||
+        ["who", "what", "where", "when", "why", "how"].some((w) => message.text.toLowerCase() === w);
     if (hasQuestion) {
         questionsPerSender[message.sender]++;
     }
@@ -421,35 +423,37 @@ let totalWords = 0;
 let messagesWithWords = 0;
 const words = {};
 const uncommonWords = {};
-messages.filter((m) => !m.deleted).forEach((message) => {
-    if (message.text.includes("omitted")) {
-        return;
-    }
-    const messageWords = message.text.replace(/\s+<This message was edited>/g, "").split(/\s+/);
-    for (const word of messageWords) {
-        // remove punctuation from either side of the word and make it lowercase
-        const cleanWord = word
-            .toLowerCase()
-            .replace(/^[^a-z']+/g, "")
-            .replace(/[^a-z']+$/g, "");
-        // ignore words that contain anything other than letters and apostrophes
-        if (!/^[a-z'’]+$/.test(cleanWord)) {
-            continue;
+messages
+    .filter((m) => !m.deleted)
+    .forEach((message) => {
+        if (message.text.includes("omitted")) {
+            return;
         }
-        if (!words[cleanWord]) {
-            words[cleanWord] = 0;
+        const messageWords = message.text.replace(/\s+<This message was edited>/g, "").split(/\s+/);
+        for (const word of messageWords) {
+            // remove punctuation from either side of the word and make it lowercase
+            const cleanWord = word
+                .toLowerCase()
+                .replace(/^[^a-z']+/g, "")
+                .replace(/[^a-z']+$/g, "");
+            // ignore words that contain anything other than letters and apostrophes
+            if (!/^[a-z'’]+$/.test(cleanWord)) {
+                continue;
+            }
+            if (!words[cleanWord]) {
+                words[cleanWord] = 0;
+                if (!commonWords.has(cleanWord)) {
+                    uncommonWords[cleanWord] = 0;
+                }
+            }
+            words[cleanWord]++;
             if (!commonWords.has(cleanWord)) {
-                uncommonWords[cleanWord] = 0;
+                uncommonWords[cleanWord]++;
             }
         }
-        words[cleanWord]++;
-        if (!commonWords.has(cleanWord)) {
-            uncommonWords[cleanWord]++;
-        }
-    }
-    messagesWithWords++;
-    totalWords += messageWords.length;
-});
+        messagesWithWords++;
+        totalWords += messageWords.length;
+    });
 outputLine("Total number of words sent:", totalWords, "\n");
 outputLine("Average number of words per message:", Math.round((totalWords / messagesWithWords) * 100) / 100, "\n");
 // show top
