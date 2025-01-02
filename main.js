@@ -516,6 +516,9 @@ for (const [emoji, count] of top) {
 }
 outputLine();
 
+// Number of unique emojis
+outputLine("Number of unique emojis:", Object.keys(emojis).length, "\n");
+
 // save messages as json
 require("fs").writeFileSync(`${outputDir}/messages.json`, JSON.stringify(messages, null, 4));
 
