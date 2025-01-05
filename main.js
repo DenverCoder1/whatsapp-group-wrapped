@@ -47,14 +47,19 @@ function outputLine(...args) {
 // Determine the format of the export file (the export differs between Android and iOS)
 // 1 = 3/9/23, 14:29 - Name: Message
 // 2 = [2023-03-09, 2:29:00 PM] Name: Message
+// 3 = 14/10/2020, 23:52 - Name: Message
 const type1Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}/gm) || []).length;
 const type2Matches = (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length;
-const CHAT_FORMAT = type1Matches > type2Matches ? 1 : 2;
+const type3Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{2}:\d{2}/gm) || []).length;
+let CHAT_FORMAT = type1Matches > type2Matches ? 1 : 2;
+CHAT_FORMAT = type3Matches > type1Matches ? 3 : CHAT_FORMAT;
 
 // parse chat into messages
 let startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
 if (CHAT_FORMAT === 2) {
     startOfMessageRegex = /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
+} else if (CHAT_FORMAT === 3) {
+    startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
 }
 const messages = [];
 let currentMessage = null;
@@ -136,6 +141,13 @@ for (const line of chat.split("\n")) {
             }
             minute = Number(match[5]);
             sender = match[8];
+        } else if (CHAT_FORMAT === 3) {
+            year = Number(match[3]);
+            day = Number(match[1]);
+            month = Number(match[2]);
+            hour = Number(match[4]);
+            minute = Number(match[5]);
+            sender = match[6];
         }
         // convert phone numbers to names if found
         const senderDigits = (sender ?? "").replace(/\D/g, "");
