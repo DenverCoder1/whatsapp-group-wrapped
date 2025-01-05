@@ -50,7 +50,7 @@ function outputLine(...args) {
 // 3 = 14/10/2020, 23:52 - Name: Message
 const type1Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}/gm) || []).length;
 const type2Matches = (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length;
-const type3Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{2}:\d{2}/gm) || []).length;
+const type3Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length;
 let CHAT_FORMAT = type1Matches > type2Matches ? 1 : 2;
 CHAT_FORMAT = type3Matches > type1Matches ? 3 : CHAT_FORMAT;
 
@@ -59,7 +59,7 @@ let startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2}) (?:- 
 if (CHAT_FORMAT === 2) {
     startOfMessageRegex = /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
 } else if (CHAT_FORMAT === 3) {
-    startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+    startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
 }
 const messages = [];
 let currentMessage = null;
