@@ -48,14 +48,14 @@ function outputLine(...args) {
 // 1 = 3/9/23, 14:29 - Name: Message
 // 2 = [2023-03-09, 2:29:00 PM] Name: Message
 // 3 = 14/10/2020, 23:52 - Name: Message
-const type1Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}/gm) || []).length;
+const type1Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}(?: (?:AM|PM))?/gm) || []).length;
 const type2Matches = (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length;
 const type3Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length;
 let CHAT_FORMAT = type1Matches > type2Matches ? 1 : 2;
 CHAT_FORMAT = type3Matches > type1Matches ? 3 : CHAT_FORMAT;
 
 // parse chat into messages
-let startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+let startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
 if (CHAT_FORMAT === 2) {
     startOfMessageRegex = /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
 } else if (CHAT_FORMAT === 3) {
@@ -128,7 +128,12 @@ for (const line of chat.split("\n")) {
         let month = match[1];
         let hour = match[4];
         let minute = match[5];
-        let sender = match[6];
+        if (match[6] === "PM" && hour !== 12) {
+            hour += 12;
+        } else if (match[6] === "AM" && hour === 12) {
+            hour = 0;
+        }
+        let sender = match[7];
         if (CHAT_FORMAT === 2) {
             year = Number(match[1]);
             month = Number(match[2]);
