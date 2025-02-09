@@ -123,11 +123,11 @@ for (const line of chat.split("\n")) {
             addMessage(currentMessage);
             currentMessage = null;
         }
-        let year = "20" + match[3];
-        let day = match[2];
-        let month = match[1];
-        let hour = match[4];
-        let minute = match[5];
+        let year = Number("20" + match[3]);
+        let day = Number(match[2]);
+        let month = Number(match[1]);
+        let hour = Number(match[4]);
+        let minute = Number(match[5]);
         if (match[6] === "PM" && hour !== 12) {
             hour += 12;
         } else if (match[6] === "AM" && hour === 12) {
