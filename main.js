@@ -452,7 +452,8 @@ messages
             const cleanWord = word
                 .toLowerCase()
                 .replace(/^[^a-z']+/g, "")
-                .replace(/[^a-z']+$/g, "");
+                .replace(/[^a-z']+$/g, "")
+                .replace(/’/g, "'");
             // ignore words that contain anything other than letters and apostrophes
             if (!/^[a-z'’]+$/.test(cleanWord)) {
                 continue;
