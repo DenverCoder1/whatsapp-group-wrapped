@@ -75,7 +75,12 @@ function addMessage(message) {
     }
     if (
         new RegExp(
-            [`added ${message.sender}`, "joined using this group's invite link", `${message.sender} was added`]
+            [
+                `added ${message.sender}`,
+                "joined using this group's invite link",
+                `${message.sender} was added`,
+                "joined using a group link",
+            ]
                 .map(regexEscape)
                 .join("|")
         ).test(message.text) ||
