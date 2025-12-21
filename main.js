@@ -316,7 +316,7 @@ messages.forEach((message, i) => {
     if (!tagsPerSender[message.sender]) {
         tagsPerSender[message.sender] = 0;
     }
-    const tags = message.text.match(/@\d{10,}/g);
+    const tags = message.text.match(/@(?:\d{10,}|\u2068[^\u2069]+\u2069)/g);
     if (tags) {
         tagsPerSender[message.sender] += tags.length;
     }
@@ -335,7 +335,7 @@ outputLine();
 // Top taggees
 const taggees = {};
 messages.forEach((message) => {
-    const tags = message.text.match(/@\d{10,}/g);
+    const tags = message.text.match(/@(?:\d{10,}|\u2068[^\u2069]+\u2069)/g);
     if (tags) {
         for (const tag of tags) {
             if (!taggees[tag]) {
