@@ -3,22 +3,10 @@
  * Run script with: `node main.js`
  */
 
+const GraphemeSplitter = require("./grapheme-splitter.min.js");
+const splitter = new GraphemeSplitter();
 const { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
 const { extractFirstFileByExtension, extractFilesByExtension } = require("./zip-extractor.js");
-const {
-    detectChatFormat,
-    getMessageRegex,
-    parseMessageMatch,
-    getSystemMessageType,
-    isQuestion,
-    hasMedia,
-    extractTags,
-    extractEmojis,
-    extractWords,
-    getTopEntries,
-    parseVcf,
-    getWrappedTitle,
-} = require("./util.js");
 const fs = require("node:fs");
 
 // check if a parameter is passed to the script
@@ -76,48 +64,104 @@ function outputLine(...args) {
     output.write(line + "\n");
 }
 
-// Determine the format of the export file
-const CHAT_FORMAT = detectChatFormat(chat);
-const startOfMessageRegex = getMessageRegex(CHAT_FORMAT);
+// Determine the format of the export file (the export differs between Android and iOS)
+// 1 = 3/9/23, 14:29 - Name: Message
+// 2 = [2023-03-09, 2:29:00 PM] Name: Message
+// 3 = 14/10/2020, 23:52 - Name: Message
+const type1Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}(?: (?:AM|PM))?/gm) || []).length;
+const type2Matches = (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length;
+const type3Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length;
+let CHAT_FORMAT = type1Matches > type2Matches ? 1 : 2;
+CHAT_FORMAT = type3Matches > type1Matches ? 3 : CHAT_FORMAT;
 
-// Parse chat into messages
+// parse chat into messages
+let startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
+if (CHAT_FORMAT === 2) {
+    startOfMessageRegex = /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
+} else if (CHAT_FORMAT === 3) {
+    startOfMessageRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+}
 const messages = [];
 let currentMessage = null;
 const addedMembers = new Set();
 const leftMembers = new Set();
 let pinnedMessages = 0;
 
+function regexEscape(str) {
+    return str.replaceAll(/[-/\\^$*+?.()|[\]{}]/g, String.raw`\$&`);
+}
+
 function addMessage(message) {
     // filter by date
     if (message.date < FILTERS.startDate || message.date > FILTERS.endDate) {
         return;
     }
-    
-    // Check for system messages
-    const systemType = getSystemMessageType(message);
-    if (systemType === "member_joined") {
+    // parse member joins
+    if (
+        new RegExp(
+            [
+                `added ${message.sender}`,
+                "joined using this group's invite link",
+                `${message.sender} was added`,
+                "joined using a group link",
+            ]
+                .map(regexEscape)
+                .join("|")
+        ).test(message.text) ||
+        (!message.sender && message.text.includes("added"))
+    ) {
         addedMembers.add(message.sender ?? message.text);
         return;
     }
-    if (systemType === "member_left") {
+    // parse member leaves
+    if (
+        new RegExp([`${message.sender} left`, `${message.sender} was removed`].map(regexEscape).join("|")).test(
+            message.text
+        ) ||
+        (!message.sender && message.text.includes("left"))
+    ) {
         leftMembers.add(message.sender ?? message.text);
         return;
     }
-    if (systemType === "pinned_message") {
+    // parse pinned messages
+    if (message.text.endsWith("pinned a message")) {
         pinnedMessages++;
         return;
     }
-    if (systemType === "other_system") {
+    // ignore other system messages
+    if (
+        new RegExp(
+            [
+                `${message.sender} left`,
+                `${message.sender} was removed`,
+                `changed this group's icon`,
+                `changed to +`,
+                `changed the subject from`,
+                `changed their phone number to a new number`,
+                `changed the group description`,
+                `changed this group's settings`,
+                `deleted this group's icon`,
+                `deleted this group's description`,
+                `removed the group description`,
+                `turned on admin approval to join this group`,
+                `${message.sender} created this group`,
+                `Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.`,
+                `${message.sender} pinned a message`,
+            ]
+                .map(regexEscape)
+                .join("|")
+        ).test(message.text)
+    ) {
         return;
     }
-    
+    message.deleted = false;
+    // null if deleted by admin, "This message was deleted" if deleted by user
     message.deleted = message.text === "null" || message.text === "This message was deleted";
-    
-    // unhandled system message without sender
+    // unhandled system message without sender (eg. "You pinned a message", "x requested to join")
     if (!message.sender) {
         return;
     }
-    
+    // add non-deleted messages to messages
     messages.push(message);
 }
 
@@ -128,9 +172,42 @@ for (const line of chat.split("\n")) {
             addMessage(currentMessage);
             currentMessage = null;
         }
-        
-        const { year, month, day, hour, minute, sender } = parseMessageMatch(match, CHAT_FORMAT, TAG_TO_NAME);
-        
+        let year = Number("20" + match[3]);
+        let day = Number(match[2]);
+        let month = Number(match[1]);
+        let hour = Number(match[4]);
+        let minute = Number(match[5]);
+        if (match[6] === "PM" && hour !== 12) {
+            hour += 12;
+        } else if (match[6] === "AM" && hour === 12) {
+            hour = 0;
+        }
+        let sender = match[7];
+        if (CHAT_FORMAT === 2) {
+            year = Number(match[1]);
+            month = Number(match[2]);
+            day = Number(match[3]);
+            hour = Number(match[4]);
+            if (match[7] === "PM" && hour !== 12) {
+                hour += 12;
+            } else if (match[7] === "AM" && hour === 12) {
+                hour = 0;
+            }
+            minute = Number(match[5]);
+            sender = match[8];
+        } else if (CHAT_FORMAT === 3) {
+            year = Number(match[3]);
+            day = Number(match[1]);
+            month = Number(match[2]);
+            hour = Number(match[4]);
+            minute = Number(match[5]);
+            sender = match[6];
+        }
+        // convert phone numbers to names if found
+        const senderDigits = (sender ?? "").replaceAll(/\D/g, "");
+        if (/[\d\s+-]/.test(sender) && TAG_TO_NAME[`@${senderDigits}`]) {
+            sender = TAG_TO_NAME[`@${senderDigits}`];
+        }
         currentMessage = {
             sender,
             year,
@@ -166,11 +243,27 @@ fs.writeFileSync(
 );
 
 // ASCII art greeting
-const welcome = "Welcome to Your";
-const title = getWrappedTitle(FILTERS.startDate, FILTERS.endDate);
+function getWrappedTitle() {
+    const startMonth = FILTERS.startDate.getMonth() + 1;
+    const startDay = FILTERS.startDate.getDate();
+    const endMonth = FILTERS.endDate.getMonth() + 1;
+    const endDay = FILTERS.endDate.getDate();
+    const year = FILTERS.startDate.getFullYear();
+    console.log(FILTERS.endDate);
+    console.log(FILTERS.endDate.toISOString());
+
+    // Check if it's a full year (Jan 1 to Dec 31)
+    if (startMonth === 1 && startDay === 1 && endMonth === 12 && endDay === 31) {
+        return `WhatsApp Group Wrapped ${year}`;
+    } else {
+        return `WhatsApp Group Wrapped ${startMonth}/${startDay}/${year} - ${endMonth}/${endDay}/${FILTERS.endDate.getFullYear()}`;
+    }
+}
+
+const title = getWrappedTitle();
 outputLine("╔═══════════════════════════════════════════════════════════╗");
 outputLine("║                                                           ║");
-outputLine(`║${welcome.padStart((59 + welcome.length) / 2).padEnd(59)}║`);
+outputLine("║                      Welcome to Your                      ║");
 outputLine(`║${title.padStart((59 + title.length) / 2).padEnd(59)}║`);
 if (groupName) {
     outputLine(`║${groupName.padStart((59 + groupName.length) / 2).padEnd(59)}║`);
@@ -187,7 +280,10 @@ messages.forEach((message) => {
     }
     messagesPerSender[message.sender]++;
 });
-let top = getTopEntries(messagesPerSender, TOP_COUNT);
+// show top
+let top = Object.entries(messagesPerSender)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top senders:`);
 for (const [sender, count] of top) {
     outputLine(`${sender} - ${count} messages`);
@@ -201,14 +297,17 @@ messages.forEach((message, i) => {
     if (!mediaPerSender[message.sender]) {
         mediaPerSender[message.sender] = 0;
     }
-    const messageHasMedia = hasMedia(message.text);
-    if (messageHasMedia) {
+    const hasMedia = /<Media omitted>|image omitted|video omitted|sticker omitted|GIF omitted/.test(message.text);
+    if (hasMedia) {
         mediaPerSender[message.sender]++;
         totalMedia++;
     }
-    messages[i].media = messageHasMedia;
+    messages[i].media = hasMedia;
 });
-top = getTopEntries(mediaPerSender, TOP_COUNT);
+// show top
+top = Object.entries(mediaPerSender)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top media senders:`);
 for (const [sender, count] of top) {
     outputLine(`${sender} - ${count} messages with media`);
@@ -221,13 +320,68 @@ messages.forEach((message, i) => {
     if (!questionsPerSender[message.sender]) {
         questionsPerSender[message.sender] = 0;
     }
-    const messageIsQuestion = isQuestion(message.text);
-    if (messageIsQuestion) {
+    const questionPhrases = [
+        "anyone know",
+        "any leads",
+        "does anyone",
+        "can I",
+        "anyone have",
+        "what is",
+        "why is",
+        "what does",
+        "what was",
+        "why was",
+        "where is",
+        "where was",
+        "what are",
+        "why are",
+        "where are",
+        "do you",
+        "is it possible",
+        "question:",
+        "question is",
+        "where would",
+        "do any of you",
+    ];
+    const questionIfFirstWord = [
+        "what",
+        "why",
+        "where",
+        "when",
+        "how",
+        "who",
+        "is",
+        "are",
+        "do",
+        "does",
+        "can",
+        "will",
+        "would",
+        "should",
+        "could",
+        "did",
+        "was",
+        "were",
+        "has",
+        "have",
+        "had",
+        "poll:",
+    ];
+    const hasQuestion =
+        /\?(?:\s|$)/.test(message.text) ||
+        new RegExp(questionPhrases.map(regexEscape).join("|")).test(message.text) ||
+        questionIfFirstWord.some((w) => new RegExp(String.raw`^${w}\s`, "i").test(message.text)) ||
+        ["who", "what", "where", "when", "why", "how"].includes(message.text.toLowerCase());
+    if (hasQuestion) {
         questionsPerSender[message.sender]++;
     }
-    messages[i].question = messageIsQuestion;
+    messages[i].question = hasQuestion;
 });
-top = getTopEntries(questionsPerSender, TOP_COUNT).filter((a) => a[1] > 0);
+// show top
+top = Object.entries(questionsPerSender)
+    .sort((a, b) => b[1] - a[1])
+    .filter((a) => a[1] > 0)
+    .slice(0, TOP_COUNT);
 outputLine(`Top question askers:`);
 for (const [sender, count] of top) {
     outputLine(`${sender} - ${count} questions asked`);
@@ -240,13 +394,16 @@ messages.forEach((message, i) => {
     if (!tagsPerSender[message.sender]) {
         tagsPerSender[message.sender] = 0;
     }
-    const tags = extractTags(message.text);
-    if (tags.length > 0) {
+    const tags = message.text.match(/@(?:\d{10,}|\u2068[^\u2069]+\u2069)/g);
+    if (tags) {
         tagsPerSender[message.sender] += tags.length;
     }
-    messages[i].tags = tags.join(" ");
+    messages[i].tags = [...new Set(tags || [])].join(" ");
 });
-top = getTopEntries(tagsPerSender, TOP_COUNT);
+// show top
+top = Object.entries(tagsPerSender)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top taggers:`);
 for (const [sender, count] of top) {
     outputLine(`${sender} - ${count} tags sent`);
@@ -256,15 +413,20 @@ outputLine();
 // Top taggees
 const taggees = {};
 messages.forEach((message) => {
-    const tags = extractTags(message.text);
-    for (const tag of tags) {
-        if (!taggees[tag]) {
-            taggees[tag] = 0;
+    const tags = message.text.match(/@(?:\d{10,}|\u2068[^\u2069]+\u2069)/g);
+    if (tags) {
+        for (const tag of tags) {
+            if (!taggees[tag]) {
+                taggees[tag] = 0;
+            }
+            taggees[tag]++;
         }
-        taggees[tag]++;
     }
 });
-top = getTopEntries(taggees, TOP_COUNT);
+// show top
+top = Object.entries(taggees)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top taggees:`);
 for (const [tag, count] of top) {
     outputLine(`${TAG_TO_NAME[tag] || tag} - tagged ${count} times`);
@@ -296,7 +458,10 @@ messages.forEach((message) => {
     }
     messagesPerHour[message.hour]++;
 });
-top = getTopEntries(messagesPerHour, TOP_COUNT);
+// show top
+top = Object.entries(messagesPerHour)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top active hours of the day:`);
 for (const [hour, count] of top) {
     outputLine(`${hour}:00 - ${count} messages`);
@@ -311,6 +476,7 @@ messages.forEach((message) => {
     }
     messagesPerDay[message.date.getDay()]++;
 });
+// show top
 top = Object.entries(messagesPerDay).sort((a, b) => b[1] - a[1]);
 outputLine(`Top active days of the week:`);
 for (const [day, count] of top) {
@@ -327,6 +493,7 @@ messages.forEach((message) => {
     }
     messagesPerMonth[message.month]++;
 });
+// show top
 top = Object.entries(messagesPerMonth).sort((a, b) => b[1] - a[1]);
 outputLine(`Top active months of the year:`);
 for (const [month, count] of top) {
@@ -372,8 +539,18 @@ messages
         if (message.text.includes("omitted")) {
             return;
         }
-        const [messageWords, cleanWords] = extractWords(message.text);
-        for (const cleanWord of cleanWords) {
+        const messageWords = message.text.replaceAll(/\s+<This message was edited>/g, "").split(/\s+/);
+        for (const word of messageWords) {
+            // remove punctuation from either side of the word and make it lowercase
+            const cleanWord = word
+                .toLowerCase()
+                .replaceAll(/^[^a-z']+/g, "")
+                .replaceAll(/[^a-z']+$/g, "")
+                .replaceAll("’", "'");
+            // ignore words that contain anything other than letters and apostrophes
+            if (!/^[a-z'’]+$/.test(cleanWord)) {
+                continue;
+            }
             if (!words[cleanWord]) {
                 words[cleanWord] = 0;
                 if (!commonWords.has(cleanWord)) {
@@ -390,13 +567,19 @@ messages
     });
 outputLine("Total number of words sent:", totalWords, "\n");
 outputLine("Average number of words per message:", Math.round((totalWords / messagesWithWords) * 100) / 100, "\n");
-top = getTopEntries(words, TOP_COUNT);
+// show top
+top = Object.entries(words)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top words:`);
 for (const [word, count] of top) {
     outputLine(`${word} - ${count} times`);
 }
 outputLine();
-top = getTopEntries(uncommonWords, TOP_COUNT);
+// show top uncommon
+top = Object.entries(uncommonWords)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top uncommon words:`);
 for (const [word, count] of top) {
     outputLine(`${word} - ${count} times`);
@@ -406,20 +589,26 @@ outputLine();
 // Top emoji senders, Most common emojis
 const emojiPerSender = {};
 const emojis = {};
+const emojiRegex = /[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/u;
 messages.forEach((message, i) => {
     if (!emojiPerSender[message.sender]) {
         emojiPerSender[message.sender] = "";
     }
-    const emojisInMessage = extractEmojis(message.text);
-    for (const emoji of emojisInMessage) {
-        if (!emojis[emoji]) {
-            emojis[emoji] = 0;
+    const emojisInMessage = [];
+    const graphemes = splitter.splitGraphemes(message.text);
+    for (const grapheme of graphemes) {
+        if (emojiRegex.test(grapheme)) {
+            emojisInMessage.push(grapheme);
+            if (!emojis[grapheme]) {
+                emojis[grapheme] = 0;
+            }
+            emojis[grapheme]++;
         }
-        emojis[emoji]++;
     }
     emojiPerSender[message.sender] += emojisInMessage.join("");
     messages[i].emojis = emojisInMessage.join("");
 });
+// show top senders
 top = Object.entries(emojiPerSender)
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, TOP_COUNT);
@@ -428,7 +617,10 @@ for (const [sender, emojis] of top) {
     outputLine(`${sender} - ${emojis.length} emojis`);
 }
 outputLine();
-top = getTopEntries(emojis, TOP_COUNT);
+// show top emojis
+top = Object.entries(emojis)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top emojis:`);
 for (const [emoji, count] of top) {
     outputLine(`${emoji} - ${count} times`);
@@ -437,6 +629,42 @@ outputLine();
 
 // Number of unique emojis
 outputLine("Number of unique emojis:", Object.keys(emojis).length, "\n");
+
+/**
+ * Parse a VCF file and extract phone numbers and names
+ * @param {string} vcfContent - Content of a VCF file
+ * @returns {Array<{phone: string, name: string}>} Array of contacts
+ */
+function parseVcf(vcfContent) {
+    const contacts = [];
+    const vcards = vcfContent.split(/(?=BEGIN:VCARD)/);
+
+    for (const vcard of vcards) {
+        if (!vcard.trim()) continue;
+
+        let name = "";
+        let phone = "";
+
+        // Extract FN (formatted name) - this is usually the display name
+        const fnMatch = /FN:(.*)/.exec(vcard);
+        if (fnMatch) {
+            name = fnMatch[1].trim();
+        }
+
+        // Extract phone number from TEL field
+        const telMatch = /TEL[^:]*:([+\d\s\-()]+)/.exec(vcard);
+        if (telMatch) {
+            // Normalize phone number - remove spaces, dashes, parentheses
+            phone = telMatch[1].replaceAll(/[\s\-()]/g, "");
+        }
+
+        if (phone && name) {
+            contacts.push({ phone, name });
+        }
+    }
+
+    return contacts;
+}
 
 /**
  * Analyze VCF files from a ZIP and count shared phone numbers
