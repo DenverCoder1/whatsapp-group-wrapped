@@ -78,12 +78,15 @@ if (CHAT_FORMAT === 2) {
 const messages = [];
 let currentMessage = null;
 const addedMembers = new Set();
+const leftMembers = new Set();
+let pinnedMessages = 0;
 
 function regexEscape(str) {
     return str.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
 
 function addMessage(message) {
+    // filter by date
     if (message.date < FILTERS.startDate || message.date > FILTERS.endDate) {
         return;
     }
@@ -104,6 +107,27 @@ function addMessage(message) {
         addedMembers.add(message.sender ?? message.text);
         return;
     }
+    // parse member leaves
+    if (
+        new RegExp(
+            [
+                `${message.sender} left`,
+                `${message.sender} was removed`,
+            ]
+                .map(regexEscape)
+                .join("|")
+        ).test(message.text) ||
+        (!message.sender && message.text.includes("left"))
+    ) {
+        leftMembers.add(message.sender ?? message.text);
+        return;
+    }
+    // parse pinned messages
+    if (message.text.endsWith("pinned a message")) {
+        pinnedMessages++;
+        return;
+    }
+    // ignore other system messages
     if (
         new RegExp(
             [
@@ -132,6 +156,10 @@ function addMessage(message) {
     message.deleted = false;
     // null if deleted by admin, "This message was deleted" if deleted by user
     message.deleted = message.text === "null" || message.text === "This message was deleted";
+    // unhandled system message without sender (eg. "You pinned a message", "x requested to join")
+    if (!message.sender) {
+        return;
+    }
     // add non-deleted messages to messages
     messages.push(message);
 }
@@ -189,6 +217,10 @@ for (const line of chat.split("\n")) {
             date: new Date(year, month - 1, day, hour, minute),
             text: line.substring(match[0].length),
         };
+        // If message text is empty or only whitespace, mark as deleted by admin
+        if (currentMessage.text.trim() === "") {
+            currentMessage.text = "null";
+        }
     } else if (currentMessage) {
         currentMessage.text += "\n" + line;
     } else {
@@ -454,6 +486,16 @@ outputLine();
 
 // Members who joined
 outputLine("Members who joined:", addedMembers.size, "\n");
+
+// Members who left
+if (leftMembers.size > 0) {
+    outputLine("Members who left:", leftMembers.size, "\n");
+}
+
+// Pinned messages
+if (pinnedMessages > 0) {
+    outputLine("Messages pinned:", pinnedMessages, "\n");
+}
 
 // Total number of words sent, average number of words per message, most common words
 let totalWords = 0;
