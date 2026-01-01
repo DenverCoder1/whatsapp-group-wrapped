@@ -72,12 +72,12 @@ Daryl Williams - 2 tags sent
 Mary Williams - 2 tags sent
 
 Top taggees:
-Nancy Johnson - tagged 4 times
-Daryl Williams - tagged 4 times
-Joe Smith - tagged 3 times
-Mary Williams - tagged 3 times
-Eric Thomas - tagged 3 times
-Annie Levin - tagged 2 times
+@Nancy Johnson - tagged 4 times
+@Daryl Williams - tagged 4 times
+@Joe Smith - tagged 3 times
+@Mary Williams - tagged 3 times
+@Eric Thomas - tagged 3 times
+@Annie Levin - tagged 2 times
 
 Total messages: 579
 
@@ -118,6 +118,10 @@ December - 10 messages
 
 Members who joined: 341
 
+Members who left: 20 
+
+Messages pinned: 9
+
 Total number of words sent: 7967
 
 Average number of words per message: 36.55
@@ -153,6 +157,25 @@ Top emojis:
 🍷 - 11 times
 🔥 - 8 times
 🍕 - 7 times
+
+Total unique phone numbers sent as contacts: 484
+
+Top 6 most shared contacts:
+1. Smith Appliance Repair (201-555-0142) - shared 10 times
+   Also known as: Smith Appliance Repair (2), Danny Smith (2), Daniel Smith Handyman (1), Smith's Appliance Service (1), Daniel Smith (Technician) (1), Danny Smith Appliance Repair (1), Daniel Smith Repairs (1), Danny Smith Appliances (1)
+2. Johnson Handyman Services (201-555-0207) - shared 9 times
+   Also known as: Johnson Handyman Services (2), John Movers (1), J. Johnson Van (1), Johnson Moving (1), Johnson Van & Mover (1), J Johnson (1), Johnson Small Moving (1), Johnson's Handyman (1)
+3. Mike Williams (201-555-0224) - shared 7 times
+   Also known as: Mike Williams (2), Michael W. (1), M. Williams (1), Mike Williams Electrician (1), Mike (1), Mike Williams Handyman (1)
+4. Sarah Davis (201-555-0909) - shared 7 times
+   Also known as: Sarah Davis (1), Sarah Seamstress (1), Sarah Jane Davis (1), Sarah Davis Alterations (1), Sarah Davis Seamstress (1), Sarah Davis Tailor (1), Sarah Jane Davis Seamstress (1)
+5. Robert Brown (201-555-0937) - shared 7 times
+   Also known as: Robert Brown (1), Bob's Phone Repair (1), Bob Phone & Laptop (1), Robert Brown Phone Repair (1), Robert Brown - Tech Repairs (1), Robert Brown (1), Bob's Tech Repairs (1)
+6. Aaron Movers (201-555-0409) - shared 6 times
+   Also known as: Aaron Movers (2), Aaron's Moving Service (1), Aaron Mover (1), A. Moving Co. (1), Aaron Moving Guy (1)
+
+Contacts shared by multiple people: 68
+Contacts with different names: 65
 ```
 
 ## License

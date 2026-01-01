@@ -1,7 +1,7 @@
 // Date range to filter messages by
 const FILTERS = {
-    startDate: new Date("2024-01-01T00:00:00"),
-    endDate: new Date("2024-12-31T23:59:59"),
+    startDate: new Date("2025-01-01T00:00:00"),
+    endDate: new Date("2025-12-31T23:59:59"),
 };
 
 // Number of top items to show per category
