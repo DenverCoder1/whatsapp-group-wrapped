@@ -13,6 +13,15 @@ const {
     parseChatMessages,
     createBanner,
     enrichMessages,
+    calculateWordStats,
+    calculateTaggees,
+    calculateDailyAverage,
+    countUniqueSenders,
+    calculateMessagesPerHour,
+    calculateMessagesPerDayOfWeek,
+    calculateMessagesPerMonth,
+    getDayName,
+    getMonthName,
     analyzeVcfFiles,
     generateCsv,
 } = require("./util.js");
@@ -53,8 +62,9 @@ const commonWords = new Set(
 // create an output file stream to write the results
 const output = fs.createWriteStream(`${outputDir}/results.txt`, { flags: "w" });
 
-/*
+/**
  * Take 1 or more args and print them to output and log them to console
+ * @param  {...any} args - Arguments to print to the output stream
  */
 function outputLine(...args) {
     const line = args.join(" ");
@@ -132,16 +142,7 @@ for (const [sender, count] of top) {
 outputLine();
 
 // Top taggees
-const taggees = {};
-messages.forEach((message) => {
-    const tagsList = Array.isArray(message.tags) ? message.tags : [];
-    for (const tag of tagsList) {
-        if (!taggees[tag]) {
-            taggees[tag] = 0;
-        }
-        taggees[tag]++;
-    }
-});
+const taggees = calculateTaggees(messages);
 top = getTopEntries(taggees, TOP_COUNT);
 outputLine(`Top taggees:`);
 for (const [tag, count] of top) {
@@ -159,21 +160,15 @@ outputLine("Total messages deleted:", messages.filter((m) => m.deleted).length, 
 outputLine("Total messages deleted by admin:", messages.filter((m) => m.text === "null").length, "\n");
 
 // Daily messages (average)
-const dailyMessages = messages.length / ((FILTERS.endDate - FILTERS.startDate) / (1000 * 60 * 60 * 24));
-outputLine("Daily messages:", Math.round(dailyMessages * 100) / 100, "\n");
+const dailyMessages = calculateDailyAverage(messages.length, FILTERS.startDate, FILTERS.endDate);
+outputLine("Daily messages:", dailyMessages, "\n");
 
 // Message senders
-const senders = new Set(messages.map((m) => m.sender));
-outputLine("Message senders:", senders.size, "\n");
+const senderCount = countUniqueSenders(messages);
+outputLine("Message senders:", senderCount, "\n");
 
 // Most active hour of the day
-const messagesPerHour = {};
-messages.forEach((message) => {
-    if (!messagesPerHour[message.hour]) {
-        messagesPerHour[message.hour] = 0;
-    }
-    messagesPerHour[message.hour]++;
-});
+const messagesPerHour = calculateMessagesPerHour(messages);
 // show top
 top = Object.entries(messagesPerHour)
     .sort((a, b) => b[1] - a[1])
@@ -185,49 +180,22 @@ for (const [hour, count] of top) {
 outputLine();
 
 // Most active day of the week
-const messagesPerDay = {};
-messages.forEach((message) => {
-    if (!messagesPerDay[message.date.getDay()]) {
-        messagesPerDay[message.date.getDay()] = 0;
-    }
-    messagesPerDay[message.date.getDay()]++;
-});
+const messagesPerDay = calculateMessagesPerDayOfWeek(messages);
 // show top
 top = Object.entries(messagesPerDay).sort((a, b) => b[1] - a[1]);
 outputLine(`Top active days of the week:`);
 for (const [day, count] of top) {
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    outputLine(`${days[day]} - ${count} messages`);
+    outputLine(`${getDayName(Number(day))} - ${count} messages`);
 }
 outputLine();
 
 // Most active month of the year
-const messagesPerMonth = {};
-messages.forEach((message) => {
-    if (!messagesPerMonth[message.month]) {
-        messagesPerMonth[message.month] = 0;
-    }
-    messagesPerMonth[message.month]++;
-});
+const messagesPerMonth = calculateMessagesPerMonth(messages);
 // show top
 top = Object.entries(messagesPerMonth).sort((a, b) => b[1] - a[1]);
 outputLine(`Top active months of the year:`);
 for (const [month, count] of top) {
-    const months = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
-    outputLine(`${months[month - 1]} - ${count} messages`);
+    outputLine(`${getMonthName(Number(month))} - ${count} messages`);
 }
 outputLine();
 
@@ -245,42 +213,7 @@ if (pinnedMessages > 0) {
 }
 
 // Total number of words sent, average number of words per message, most common words
-let totalWords = 0;
-let messagesWithWords = 0;
-const words = {};
-const uncommonWords = {};
-messages
-    .filter((m) => !m.deleted)
-    .forEach((message) => {
-        if (message.text.includes("omitted")) {
-            return;
-        }
-        const messageWords = message.text.replaceAll(/\s+<This message was edited>/g, "").split(/\s+/);
-        for (const word of messageWords) {
-            // remove punctuation from either side of the word and make it lowercase
-            const cleanWord = word
-                .toLowerCase()
-                .replaceAll(/^[^a-z']+/g, "")
-                .replaceAll(/[^a-z']+$/g, "")
-                .replaceAll("’", "'");
-            // ignore words that contain anything other than letters and apostrophes
-            if (!/^[a-z'’]+$/.test(cleanWord)) {
-                continue;
-            }
-            if (!words[cleanWord]) {
-                words[cleanWord] = 0;
-                if (!commonWords.has(cleanWord)) {
-                    uncommonWords[cleanWord] = 0;
-                }
-            }
-            words[cleanWord]++;
-            if (!commonWords.has(cleanWord)) {
-                uncommonWords[cleanWord]++;
-            }
-        }
-        messagesWithWords++;
-        totalWords += messageWords.length;
-    });
+const { totalWords, messagesWithWords, words, uncommonWords } = calculateWordStats(messages, commonWords);
 outputLine("Total number of words sent:", totalWords, "\n");
 outputLine("Average number of words per message:", Math.round((totalWords / messagesWithWords) * 100) / 100, "\n");
 // show top

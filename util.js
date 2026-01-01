@@ -44,7 +44,7 @@ function getMessageRegex(chatFormat) {
  */
 function parseMessageMatch(match, chatFormat, tagToName) {
     let year, month, day, hour, minute, sender;
-    
+
     if (chatFormat === 2) {
         year = Number(match[1]);
         month = Number(match[2]);
@@ -77,13 +77,13 @@ function parseMessageMatch(match, chatFormat, tagToName) {
         }
         sender = match[7];
     }
-    
+
     // Convert phone numbers to names if found
     const senderDigits = (sender ?? "").replaceAll(/\D/g, "");
     if (/[\d\s+-]/.test(sender) && tagToName[`@${senderDigits}`]) {
         sender = tagToName[`@${senderDigits}`];
     }
-    
+
     return { year, month, day, hour, minute, sender };
 }
 
@@ -109,7 +109,7 @@ function getSystemMessageType(message) {
     ) {
         return "member_joined";
     }
-    
+
     // Member leaves
     if (
         new RegExp([`${message.sender} left`, `${message.sender} was removed`].map(regexEscape).join("|")).test(
@@ -119,12 +119,12 @@ function getSystemMessageType(message) {
     ) {
         return "member_left";
     }
-    
+
     // Pinned messages
     if (message.text.endsWith("pinned a message")) {
         return "pinned_message";
     }
-    
+
     // Other system messages
     if (
         new RegExp(
@@ -147,11 +147,12 @@ function getSystemMessageType(message) {
             ]
                 .map(regexEscape)
                 .join("|")
-        ).test(message.text)
+        ).test(message.text) ||
+        !message.sender
     ) {
         return "other_system";
     }
-    
+
     return null;
 }
 
@@ -208,7 +209,7 @@ function isQuestion(text) {
         "had",
         "poll:",
     ];
-    
+
     return (
         /\?(?:\s|$)/.test(text) ||
         new RegExp(questionPhrases.map(regexEscape).join("|")).test(text) ||
@@ -261,7 +262,7 @@ function extractEmojis(text) {
 function extractWords(text) {
     const messageWords = text.replaceAll(/\s+<This message was edited>/g, "").split(/\s+/);
     const cleanWords = [];
-    
+
     for (const word of messageWords) {
         // Remove punctuation from either side of the word and make it lowercase
         const cleanWord = word
@@ -274,7 +275,7 @@ function extractWords(text) {
             cleanWords.push(cleanWord);
         }
     }
-    
+
     return [messageWords, cleanWords];
 }
 
@@ -355,7 +356,7 @@ function getWrappedTitle(startDate, endDate) {
  */
 function loadChatFile(filePath, extractFirstFileByExtension) {
     const fs = require("node:fs");
-    
+
     if (filePath.toLowerCase().endsWith(".zip")) {
         const chatFile = extractFirstFileByExtension(filePath, ".txt");
         const chat = chatFile.content.toString("utf8").replaceAll(/[\u202f\u200e]/g, " ");
@@ -391,13 +392,13 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
     const addedMembers = new Set();
     const leftMembers = new Set();
     let pinnedMessages = 0;
-    
+
     function addMessage(message) {
         // filter by date
         if (message.date < filters.startDate || message.date > filters.endDate) {
             return;
         }
-        
+
         // Check for system messages
         const systemType = getSystemMessageType(message);
         if (systemType === "member_joined") {
@@ -415,17 +416,12 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
         if (systemType === "other_system") {
             return;
         }
-        
+
         message.deleted = message.text === "null" || message.text === "This message was deleted";
-        
-        // unhandled system message without sender
-        if (!message.sender) {
-            return;
-        }
-        
+
         messages.push(message);
     }
-    
+
     for (const line of chat.split("\n")) {
         const match = startOfMessageRegex.exec(line);
         if (match) {
@@ -433,9 +429,9 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
                 addMessage(currentMessage);
                 currentMessage = null;
             }
-            
+
             const { year, month, day, hour, minute, sender } = parseMessageMatch(match, chatFormat, tagToName);
-            
+
             currentMessage = {
                 sender,
                 year,
@@ -454,29 +450,238 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
             currentMessage.text += "\n" + line;
         }
     }
-    
+
     if (currentMessage) {
         addMessage(currentMessage);
     }
-    
+
     return { messages, addedMembers, leftMembers, pinnedMessages };
 }
 
 /**
- * Calculate statistics per sender for a given property
+ * Enrich messages with additional metadata (media, questions, tags, emojis)
  * @param {Array} messages - Array of message objects
- * @param {Function} valueExtractor - Function to extract value from message
- * @returns {Object} - Statistics per sender
+ * @returns {Object} - Enriched data with per-sender statistics
  */
-function calculateStatsPerSender(messages, valueExtractor) {
-    const stats = {};
-    messages.forEach((message) => {
-        if (!stats[message.sender]) {
-            stats[message.sender] = 0;
+function enrichMessages(messages) {
+    const mediaPerSender = {};
+    const questionsPerSender = {};
+    const tagsPerSender = {};
+    const emojiPerSender = {};
+    const emojis = {};
+    let totalMedia = 0;
+
+    messages.forEach((message, i) => {
+        // Initialize sender stats
+        if (!(message.sender in mediaPerSender)) {
+            mediaPerSender[message.sender] = 0;
+            questionsPerSender[message.sender] = 0;
+            tagsPerSender[message.sender] = 0;
+            emojiPerSender[message.sender] = "";
         }
-        stats[message.sender] += valueExtractor(message);
+
+        // Check for media
+        const messageHasMedia = hasMedia(message.text);
+        if (messageHasMedia) {
+            mediaPerSender[message.sender]++;
+            totalMedia++;
+        }
+        messages[i].media = messageHasMedia;
+
+        // Check for questions
+        const messageIsQuestion = isQuestion(message.text);
+        if (messageIsQuestion) {
+            questionsPerSender[message.sender]++;
+        }
+        messages[i].question = messageIsQuestion;
+
+        // Extract tags
+        const tags = extractTags(message.text);
+        if (tags.length > 0) {
+            tagsPerSender[message.sender] += tags.length;
+        }
+        messages[i].tags = tags;
+
+        // Extract emojis
+        const emojisInMessage = extractEmojis(message.text);
+        for (const emoji of emojisInMessage) {
+            if (!emojis[emoji]) {
+                emojis[emoji] = 0;
+            }
+            emojis[emoji]++;
+        }
+        emojiPerSender[message.sender] += emojisInMessage.join("");
+        messages[i].emojis = emojisInMessage.join("");
     });
-    return stats;
+
+    return {
+        mediaPerSender,
+        questionsPerSender,
+        tagsPerSender,
+        emojiPerSender,
+        emojis,
+        totalMedia,
+    };
+}
+
+/**
+ * Calculate word statistics from messages
+ * @param {Array} messages - Array of message objects
+ * @param {Set} commonWords - Set of common words to filter
+ * @returns {Object} - Word statistics
+ */
+function calculateWordStats(messages, commonWords) {
+    let totalWords = 0;
+    let messagesWithWords = 0;
+    const words = {};
+    const uncommonWords = {};
+
+    messages
+        .filter((m) => !m.deleted)
+        .forEach((message) => {
+            if (message.text.includes("omitted")) {
+                return;
+            }
+            const [messageWords, cleanWords] = extractWords(message.text);
+            for (const cleanWord of cleanWords) {
+                if (!words[cleanWord]) {
+                    words[cleanWord] = 0;
+                    if (!commonWords.has(cleanWord)) {
+                        uncommonWords[cleanWord] = 0;
+                    }
+                }
+                words[cleanWord]++;
+                if (!commonWords.has(cleanWord)) {
+                    uncommonWords[cleanWord]++;
+                }
+            }
+            messagesWithWords++;
+            totalWords += messageWords.length;
+        });
+
+    return { totalWords, messagesWithWords, words, uncommonWords };
+}
+
+/**
+ * Calculate taggees (who gets tagged most)
+ * @param {Array} messages - Array of message objects with tags property
+ * @returns {Object} - Object with tag as key and count as value
+ */
+function calculateTaggees(messages) {
+    const taggees = {};
+    messages.forEach((message) => {
+        const tagsList = Array.isArray(message.tags) ? message.tags : [];
+        for (const tag of tagsList) {
+            if (!(tag in taggees)) {
+                taggees[tag] = 0;
+            }
+            taggees[tag]++;
+        }
+    });
+    return taggees;
+}
+
+/**
+ * Calculate daily message average
+ * @param {number} totalMessages - Total number of messages
+ * @param {Date} startDate - Start date
+ * @param {Date} endDate - End date
+ * @returns {number} - Average messages per day
+ */
+function calculateDailyAverage(totalMessages, startDate, endDate) {
+    const days = (endDate - startDate) / (1000 * 60 * 60 * 24);
+    return Math.round((totalMessages / days) * 100) / 100;
+}
+
+/**
+ * Count unique senders
+ * @param {Array} messages - Array of message objects
+ * @returns {number} - Number of unique senders
+ */
+function countUniqueSenders(messages) {
+    return new Set(messages.map((m) => m.sender)).size;
+}
+
+/**
+ * Calculate messages per hour of day
+ * @param {Array} messages - Array of message objects
+ * @returns {Object} - Object with hour (0-23) as key and count as value
+ */
+function calculateMessagesPerHour(messages) {
+    const messagesPerHour = {};
+    messages.forEach((message) => {
+        if (!(message.hour in messagesPerHour)) {
+            messagesPerHour[message.hour] = 0;
+        }
+        messagesPerHour[message.hour]++;
+    });
+    return messagesPerHour;
+}
+
+/**
+ * Calculate messages per day of week
+ * @param {Array} messages - Array of message objects
+ * @returns {Object} - Object with day (0-6, Sunday-Saturday) as key and count as value
+ */
+function calculateMessagesPerDayOfWeek(messages) {
+    const messagesPerDay = {};
+    messages.forEach((message) => {
+        const day = message.date.getDay();
+        if (!(day in messagesPerDay)) {
+            messagesPerDay[day] = 0;
+        }
+        messagesPerDay[day]++;
+    });
+    return messagesPerDay;
+}
+
+/**
+ * Calculate messages per month
+ * @param {Array} messages - Array of message objects
+ * @returns {Object} - Object with month (1-12) as key and count as value
+ */
+function calculateMessagesPerMonth(messages) {
+    const messagesPerMonth = {};
+    messages.forEach((message) => {
+        if (!(message.month in messagesPerMonth)) {
+            messagesPerMonth[message.month] = 0;
+        }
+        messagesPerMonth[message.month]++;
+    });
+    return messagesPerMonth;
+}
+
+/**
+ * Get day name from day number
+ * @param {number} day - Day number (0-6, Sunday-Saturday)
+ * @returns {string} - Day name
+ */
+function getDayName(day) {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return days[day];
+}
+
+/**
+ * Get month name from month number
+ * @param {number} month - Month number (1-12)
+ * @returns {string} - Month name
+ */
+function getMonthName(month) {
+    const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
+    return months[month - 1];
 }
 
 /**
@@ -534,10 +739,10 @@ function generateCsv(messages) {
     if (messages.length === 0) {
         return "";
     }
-    
+
     const headers = Object.keys(messages[0]);
     const csv = [headers.join(",")];
-    
+
     // write each row, but take into account that some messages may have quotes, commas, or newlines
     for (const message of messages) {
         const row = [];
@@ -553,7 +758,7 @@ function generateCsv(messages) {
         }
         csv.push(row.join(","));
     }
-    
+
     return csv.join("\n");
 }
 
@@ -568,122 +773,19 @@ function createBanner(startDate, endDate, groupName) {
     const welcome = "Welcome to Your";
     const title = getWrappedTitle(startDate, endDate);
     const lines = [];
-    
-    lines.push("╔═══════════════════════════════════════════════════════════╗");
-    lines.push("║                                                           ║");
-    lines.push(`║${welcome.padStart((59 + welcome.length) / 2).padEnd(59)}║`);
-    lines.push(`║${title.padStart((59 + title.length) / 2).padEnd(59)}║`);
+    const boxWidth = 4 + Math.max(welcome.length, title.length, groupName ? groupName.length : 0, 46);
+
+    lines.push(`╔${"═".repeat(boxWidth)}╗`);
+    lines.push(`║${"".padStart(boxWidth)}║`);
+    lines.push(`║${welcome.padStart((boxWidth + welcome.length) / 2).padEnd(boxWidth)}║`);
+    lines.push(`║${title.padStart((boxWidth + title.length) / 2).padEnd(boxWidth)}║`);
     if (groupName) {
-        lines.push(`║${groupName.padStart((59 + groupName.length) / 2).padEnd(59)}║`);
+        lines.push(`║${groupName.padStart((boxWidth + groupName.length) / 2).padEnd(boxWidth)}║`);
     }
-    lines.push("║                                                           ║");
-    lines.push("╚═══════════════════════════════════════════════════════════╝");
-    
+    lines.push(`║${"".padStart(boxWidth)}║`);
+    lines.push(`╚${"═".repeat(boxWidth)}╝`);
+
     return lines;
-}
-
-/**
- * Enrich messages with additional metadata (media, questions, tags, emojis)
- * @param {Array} messages - Array of message objects
- * @returns {Object} - Enriched data with per-sender statistics
- */
-function enrichMessages(messages) {
-    const mediaPerSender = {};
-    const questionsPerSender = {};
-    const tagsPerSender = {};
-    const emojiPerSender = {};
-    const emojis = {};
-    let totalMedia = 0;
-    
-    messages.forEach((message, i) => {
-        // Initialize sender stats
-        if (!(message.sender in mediaPerSender)) {
-            mediaPerSender[message.sender] = 0;
-            questionsPerSender[message.sender] = 0;
-            tagsPerSender[message.sender] = 0;
-            emojiPerSender[message.sender] = "";
-        }
-        
-        // Check for media
-        const messageHasMedia = hasMedia(message.text);
-        if (messageHasMedia) {
-            mediaPerSender[message.sender]++;
-            totalMedia++;
-        }
-        messages[i].media = messageHasMedia;
-        
-        // Check for questions
-        const messageIsQuestion = isQuestion(message.text);
-        if (messageIsQuestion) {
-            questionsPerSender[message.sender]++;
-        }
-        messages[i].question = messageIsQuestion;
-        
-        // Extract tags
-        const tags = extractTags(message.text);
-        if (tags.length > 0) {
-            tagsPerSender[message.sender] += tags.length;
-        }
-        messages[i].tags = tags;
-        
-        // Extract emojis
-        const emojisInMessage = extractEmojis(message.text);
-        for (const emoji of emojisInMessage) {
-            if (!emojis[emoji]) {
-                emojis[emoji] = 0;
-            }
-            emojis[emoji]++;
-        }
-        emojiPerSender[message.sender] += emojisInMessage.join("");
-        messages[i].emojis = emojisInMessage.join("");
-    });
-    
-    return {
-        mediaPerSender,
-        questionsPerSender,
-        tagsPerSender,
-        emojiPerSender,
-        emojis,
-        totalMedia,
-    };
-}
-
-/**
- * Calculate word statistics from messages
- * @param {Array} messages - Array of message objects
- * @param {Set} commonWords - Set of common words to filter
- * @returns {Object} - Word statistics
- */
-function calculateWordStats(messages, commonWords) {
-    let totalWords = 0;
-    let messagesWithWords = 0;
-    const words = {};
-    const uncommonWords = {};
-    
-    messages
-        .filter((m) => !m.deleted)
-        .forEach((message) => {
-            if (message.text.includes("omitted")) {
-                return;
-            }
-            const [messageWords, cleanWords] = extractWords(message.text);
-            for (const cleanWord of cleanWords) {
-                if (!words[cleanWord]) {
-                    words[cleanWord] = 0;
-                    if (!commonWords.has(cleanWord)) {
-                        uncommonWords[cleanWord] = 0;
-                    }
-                }
-                words[cleanWord]++;
-                if (!commonWords.has(cleanWord)) {
-                    uncommonWords[cleanWord]++;
-                }
-            }
-            messagesWithWords++;
-            totalWords += messageWords.length;
-        });
-    
-    return { totalWords, messagesWithWords, words, uncommonWords };
 }
 
 module.exports = {
@@ -703,10 +805,17 @@ module.exports = {
     loadChatFile,
     extractGroupName,
     parseChatMessages,
-    calculateStatsPerSender,
+    enrichMessages,
+    calculateWordStats,
+    calculateTaggees,
+    calculateDailyAverage,
+    countUniqueSenders,
+    calculateMessagesPerHour,
+    calculateMessagesPerDayOfWeek,
+    calculateMessagesPerMonth,
+    getDayName,
+    getMonthName,
     analyzeVcfFiles,
     generateCsv,
     createBanner,
-    enrichMessages,
-    calculateWordStats,
 };
