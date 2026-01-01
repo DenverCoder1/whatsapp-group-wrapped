@@ -700,7 +700,7 @@ if (vcfAnalysis.size > 0) {
     outputLine();
 
     // Show most shared contacts
-    const topShared = sortedPhones.slice(0, Math.min(20, sortedPhones.length));
+    const topShared = sortedPhones.slice(0, Math.min(TOP_COUNT, sortedPhones.length));
     outputLine(`Top ${topShared.length} most shared contacts:`);
     for (let i = 0; i < topShared.length; i++) {
         const [phone, stats] = topShared[i];
