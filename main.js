@@ -23,20 +23,27 @@ const outputDir = "output";
 fs.mkdirSync(outputDir, { recursive: true });
 
 let chat;
+let chatFileName = IMPORT_FILE;
 
 // Handle .zip files
 if (IMPORT_FILE.toLowerCase().endsWith(".zip")) {
     try {
-        const txtContent = extractFirstFileByExtension(IMPORT_FILE, ".txt");
-        chat = txtContent.replaceAll(/[\u202f\u200e]/g, " ");
+        const chatFile = extractFirstFileByExtension(IMPORT_FILE, ".txt");
+        chatFileName = chatFile.filename;
+        chat = chatFile.content.toString("utf8").replaceAll(/[\u202f\u200e]/g, " ");
     } catch (error) {
         console.error(error.message);
         process.exit(1);
     }
-} else {
-    // Handle regular .txt files
+}
+// Handle .txt files
+else {
     chat = fs.readFileSync(IMPORT_FILE, "utf8").replaceAll(/[\u202f\u200e]/g, " ");
 }
+
+// extract group name from file name if possible
+const chatFileNameMatch = chatFileName.match(/WhatsApp Chat with (.+?)(?: \(\d+\))?\.txt$/);
+const groupName = chatFileNameMatch ? chatFileNameMatch[1] : "";
 
 const commonWords = new Set(
     fs
@@ -108,14 +115,9 @@ function addMessage(message) {
     }
     // parse member leaves
     if (
-        new RegExp(
-            [
-                `${message.sender} left`,
-                `${message.sender} was removed`,
-            ]
-                .map(regexEscape)
-                .join("|")
-        ).test(message.text) ||
+        new RegExp([`${message.sender} left`, `${message.sender} was removed`].map(regexEscape).join("|")).test(
+            message.text
+        ) ||
         (!message.sender && message.text.includes("left"))
     ) {
         leftMembers.add(message.sender ?? message.text);
@@ -239,6 +241,36 @@ fs.writeFileSync(
         4
     )
 );
+
+// ASCII art greeting
+function getWrappedTitle() {
+    const startMonth = FILTERS.startDate.getMonth() + 1;
+    const startDay = FILTERS.startDate.getDate();
+    const endMonth = FILTERS.endDate.getMonth() + 1;
+    const endDay = FILTERS.endDate.getDate();
+    const year = FILTERS.startDate.getFullYear();
+    console.log(FILTERS.endDate);
+    console.log(FILTERS.endDate.toISOString());
+
+    // Check if it's a full year (Jan 1 to Dec 31)
+    if (startMonth === 1 && startDay === 1 && endMonth === 12 && endDay === 31) {
+        return `WhatsApp Group Wrapped ${year}`;
+    } else {
+        return `WhatsApp Group Wrapped ${startMonth}/${startDay}/${year} - ${endMonth}/${endDay}/${FILTERS.endDate.getFullYear()}`;
+    }
+}
+
+const title = getWrappedTitle();
+outputLine("╔═══════════════════════════════════════════════════════════╗");
+outputLine("║                                                           ║");
+outputLine("║                      Welcome to Your                      ║");
+outputLine(`║${title.padStart((59 + title.length) / 2).padEnd(59)}║`);
+if (groupName) {
+    outputLine(`║${groupName.padStart((59 + groupName.length) / 2).padEnd(59)}║`);
+}
+outputLine("║                                                           ║");
+outputLine("╚═══════════════════════════════════════════════════════════╝");
+outputLine();
 
 // Top message senders
 const messagesPerSender = {};
@@ -514,7 +546,7 @@ messages
                 .toLowerCase()
                 .replaceAll(/^[^a-z']+/g, "")
                 .replaceAll(/[^a-z']+$/g, "")
-                .replaceAll('’', "'");
+                .replaceAll("’", "'");
             // ignore words that contain anything other than letters and apostrophes
             if (!/^[a-z'’]+$/.test(cleanWord)) {
                 continue;

@@ -27,7 +27,7 @@ Replace the path with the path to the exported chat file. If, for example, the c
 node main.js 'chat.txt'
 ```
 
-You can also provide a zip file containing the chat export and contact cards (.vcf files). The script will extract the chat text file from the zip and process it as well as provide an analysis of contacts mentioned in the chat.
+You can also provide a zip file containing the chat export and contact cards (.vcf files). The script will extract the chat text file from the zip to process as well as provide an analysis of contact cards shared in the chat.
 
 ```bash
 node main.js 'path/to/WhatsApp Chat with Group Name.zip'
@@ -38,6 +38,14 @@ node main.js 'path/to/WhatsApp Chat with Group Name.zip'
 ## Example output
 
 ```
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║                      Welcome to Your                      ║
+║                WhatsApp Group Wrapped 2025                ║
+║                   Pomegranate Community                   ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
 Top senders:
 Jeffrey Thomas - 127 messages
 Susan Smith - 91 messages

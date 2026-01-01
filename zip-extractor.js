@@ -145,7 +145,7 @@ function extractFilesByExtension(zipFilePath, extension) {
  */
 function extractFirstFileByExtension(zipFilePath, extension) {
     const entries = extractFilesByExtension(zipFilePath, extension);
-    return entries[0].content;
+    return entries[0];
 }
 
 module.exports = { 
