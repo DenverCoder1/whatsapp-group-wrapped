@@ -7,17 +7,15 @@ const { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
 const { extractFirstFileByExtension, extractFilesByExtension } = require("./zip-extractor.js");
 const {
     detectChatFormat,
-    getMessageRegex,
-    parseMessageMatch,
-    getSystemMessageType,
-    isQuestion,
-    hasMedia,
-    extractTags,
-    extractEmojis,
-    extractWords,
     getTopEntries,
-    parseVcf,
-    getWrappedTitle,
+    loadChatFile,
+    extractGroupName,
+    parseChatMessages,
+    createBanner,
+    enrichMessages,
+    calculateWordStats,
+    analyzeVcfFiles,
+    generateCsv,
 } = require("./util.js");
 const fs = require("node:fs");
 
@@ -34,28 +32,17 @@ const IMPORT_FILE = process.argv[2];
 const outputDir = "output";
 fs.mkdirSync(outputDir, { recursive: true });
 
-let chat;
-let chatFileName = IMPORT_FILE;
-
-// Handle .zip files
-if (IMPORT_FILE.toLowerCase().endsWith(".zip")) {
-    try {
-        const chatFile = extractFirstFileByExtension(IMPORT_FILE, ".txt");
-        chatFileName = chatFile.filename;
-        chat = chatFile.content.toString("utf8").replaceAll(/[\u202f\u200e]/g, " ");
-    } catch (error) {
-        console.error(error.message);
-        process.exit(1);
-    }
+// Load chat file
+let chat, chatFileName, groupName;
+try {
+    const loaded = loadChatFile(IMPORT_FILE, extractFirstFileByExtension);
+    chat = loaded.chat;
+    chatFileName = loaded.fileName;
+    groupName = extractGroupName(chatFileName);
+} catch (error) {
+    console.error(error.message);
+    process.exit(1);
 }
-// Handle .txt files
-else {
-    chat = fs.readFileSync(IMPORT_FILE, "utf8").replaceAll(/[\u202f\u200e]/g, " ");
-}
-
-// extract group name from file name if possible
-const chatFileNameMatch = chatFileName.match(/WhatsApp Chat with (.+?)(?: \(\d+\))?\.txt$/);
-const groupName = chatFileNameMatch ? chatFileNameMatch[1] : "";
 
 const commonWords = new Set(
     fs
@@ -78,82 +65,14 @@ function outputLine(...args) {
 
 // Determine the format of the export file
 const CHAT_FORMAT = detectChatFormat(chat);
-const startOfMessageRegex = getMessageRegex(CHAT_FORMAT);
 
 // Parse chat into messages
-const messages = [];
-let currentMessage = null;
-const addedMembers = new Set();
-const leftMembers = new Set();
-let pinnedMessages = 0;
-
-function addMessage(message) {
-    // filter by date
-    if (message.date < FILTERS.startDate || message.date > FILTERS.endDate) {
-        return;
-    }
-    
-    // Check for system messages
-    const systemType = getSystemMessageType(message);
-    if (systemType === "member_joined") {
-        addedMembers.add(message.sender ?? message.text);
-        return;
-    }
-    if (systemType === "member_left") {
-        leftMembers.add(message.sender ?? message.text);
-        return;
-    }
-    if (systemType === "pinned_message") {
-        pinnedMessages++;
-        return;
-    }
-    if (systemType === "other_system") {
-        return;
-    }
-    
-    message.deleted = message.text === "null" || message.text === "This message was deleted";
-    
-    // unhandled system message without sender
-    if (!message.sender) {
-        return;
-    }
-    
-    messages.push(message);
-}
-
-for (const line of chat.split("\n")) {
-    const match = startOfMessageRegex.exec(line);
-    if (match) {
-        if (currentMessage) {
-            addMessage(currentMessage);
-            currentMessage = null;
-        }
-        
-        const { year, month, day, hour, minute, sender } = parseMessageMatch(match, CHAT_FORMAT, TAG_TO_NAME);
-        
-        currentMessage = {
-            sender,
-            year,
-            month,
-            day,
-            hour,
-            minute,
-            date: new Date(year, month - 1, day, hour, minute),
-            text: line.substring(match[0].length),
-        };
-        // If message text is empty or only whitespace, mark as deleted by admin
-        if (currentMessage.text.trim() === "") {
-            currentMessage.text = "null";
-        }
-    } else if (currentMessage) {
-        currentMessage.text += "\n" + line;
-    } else {
-        console.error("Couldn't parse line:", line);
-    }
-}
-if (currentMessage) {
-    addMessage(currentMessage);
-}
+const { messages, addedMembers, leftMembers, pinnedMessages } = parseChatMessages(
+    chat,
+    CHAT_FORMAT,
+    TAG_TO_NAME,
+    FILTERS
+);
 
 // save messages as array of text only
 fs.writeFileSync(
@@ -166,18 +85,19 @@ fs.writeFileSync(
 );
 
 // ASCII art greeting
-const welcome = "Welcome to Your";
-const title = getWrappedTitle(FILTERS.startDate, FILTERS.endDate);
-outputLine("╔═══════════════════════════════════════════════════════════╗");
-outputLine("║                                                           ║");
-outputLine(`║${welcome.padStart((59 + welcome.length) / 2).padEnd(59)}║`);
-outputLine(`║${title.padStart((59 + title.length) / 2).padEnd(59)}║`);
-if (groupName) {
-    outputLine(`║${groupName.padStart((59 + groupName.length) / 2).padEnd(59)}║`);
-}
-outputLine("║                                                           ║");
-outputLine("╚═══════════════════════════════════════════════════════════╝");
+const bannerLines = createBanner(FILTERS.startDate, FILTERS.endDate, groupName);
+bannerLines.forEach((line) => outputLine(line));
 outputLine();
+
+// Enrich messages with additional metadata
+const {
+    mediaPerSender,
+    questionsPerSender,
+    tagsPerSender,
+    emojiPerSender,
+    emojis,
+    totalMedia,
+} = enrichMessages(messages);
 
 // Top message senders
 const messagesPerSender = {};
@@ -195,19 +115,6 @@ for (const [sender, count] of top) {
 outputLine();
 
 // Top media senders
-const mediaPerSender = {};
-let totalMedia = 0;
-messages.forEach((message, i) => {
-    if (!mediaPerSender[message.sender]) {
-        mediaPerSender[message.sender] = 0;
-    }
-    const messageHasMedia = hasMedia(message.text);
-    if (messageHasMedia) {
-        mediaPerSender[message.sender]++;
-        totalMedia++;
-    }
-    messages[i].media = messageHasMedia;
-});
 top = getTopEntries(mediaPerSender, TOP_COUNT);
 outputLine(`Top media senders:`);
 for (const [sender, count] of top) {
@@ -216,17 +123,6 @@ for (const [sender, count] of top) {
 outputLine("\nTotal messages with media:", totalMedia, "\n");
 
 // Top question askers
-const questionsPerSender = {};
-messages.forEach((message, i) => {
-    if (!questionsPerSender[message.sender]) {
-        questionsPerSender[message.sender] = 0;
-    }
-    const messageIsQuestion = isQuestion(message.text);
-    if (messageIsQuestion) {
-        questionsPerSender[message.sender]++;
-    }
-    messages[i].question = messageIsQuestion;
-});
 top = getTopEntries(questionsPerSender, TOP_COUNT).filter((a) => a[1] > 0);
 outputLine(`Top question askers:`);
 for (const [sender, count] of top) {
@@ -235,17 +131,6 @@ for (const [sender, count] of top) {
 outputLine();
 
 // Top taggers
-const tagsPerSender = {};
-messages.forEach((message, i) => {
-    if (!tagsPerSender[message.sender]) {
-        tagsPerSender[message.sender] = 0;
-    }
-    const tags = extractTags(message.text);
-    if (tags.length > 0) {
-        tagsPerSender[message.sender] += tags.length;
-    }
-    messages[i].tags = tags.join(" ");
-});
 top = getTopEntries(tagsPerSender, TOP_COUNT);
 outputLine(`Top taggers:`);
 for (const [sender, count] of top) {
@@ -256,8 +141,8 @@ outputLine();
 // Top taggees
 const taggees = {};
 messages.forEach((message) => {
-    const tags = extractTags(message.text);
-    for (const tag of tags) {
+    const tagsList = Array.isArray(message.tags) ? message.tags : [];
+    for (const tag of tagsList) {
         if (!taggees[tag]) {
             taggees[tag] = 0;
         }
@@ -296,7 +181,10 @@ messages.forEach((message) => {
     }
     messagesPerHour[message.hour]++;
 });
-top = getTopEntries(messagesPerHour, TOP_COUNT);
+// show top
+top = Object.entries(messagesPerHour)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top active hours of the day:`);
 for (const [hour, count] of top) {
     outputLine(`${hour}:00 - ${count} messages`);
@@ -311,6 +199,7 @@ messages.forEach((message) => {
     }
     messagesPerDay[message.date.getDay()]++;
 });
+// show top
 top = Object.entries(messagesPerDay).sort((a, b) => b[1] - a[1]);
 outputLine(`Top active days of the week:`);
 for (const [day, count] of top) {
@@ -327,6 +216,7 @@ messages.forEach((message) => {
     }
     messagesPerMonth[message.month]++;
 });
+// show top
 top = Object.entries(messagesPerMonth).sort((a, b) => b[1] - a[1]);
 outputLine(`Top active months of the year:`);
 for (const [month, count] of top) {
@@ -372,8 +262,18 @@ messages
         if (message.text.includes("omitted")) {
             return;
         }
-        const [messageWords, cleanWords] = extractWords(message.text);
-        for (const cleanWord of cleanWords) {
+        const messageWords = message.text.replaceAll(/\s+<This message was edited>/g, "").split(/\s+/);
+        for (const word of messageWords) {
+            // remove punctuation from either side of the word and make it lowercase
+            const cleanWord = word
+                .toLowerCase()
+                .replaceAll(/^[^a-z']+/g, "")
+                .replaceAll(/[^a-z']+$/g, "")
+                .replaceAll("’", "'");
+            // ignore words that contain anything other than letters and apostrophes
+            if (!/^[a-z'’]+$/.test(cleanWord)) {
+                continue;
+            }
             if (!words[cleanWord]) {
                 words[cleanWord] = 0;
                 if (!commonWords.has(cleanWord)) {
@@ -390,13 +290,19 @@ messages
     });
 outputLine("Total number of words sent:", totalWords, "\n");
 outputLine("Average number of words per message:", Math.round((totalWords / messagesWithWords) * 100) / 100, "\n");
-top = getTopEntries(words, TOP_COUNT);
+// show top
+top = Object.entries(words)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top words:`);
 for (const [word, count] of top) {
     outputLine(`${word} - ${count} times`);
 }
 outputLine();
-top = getTopEntries(uncommonWords, TOP_COUNT);
+// show top uncommon
+top = Object.entries(uncommonWords)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_COUNT);
 outputLine(`Top uncommon words:`);
 for (const [word, count] of top) {
     outputLine(`${word} - ${count} times`);
@@ -404,28 +310,12 @@ for (const [word, count] of top) {
 outputLine();
 
 // Top emoji senders, Most common emojis
-const emojiPerSender = {};
-const emojis = {};
-messages.forEach((message, i) => {
-    if (!emojiPerSender[message.sender]) {
-        emojiPerSender[message.sender] = "";
-    }
-    const emojisInMessage = extractEmojis(message.text);
-    for (const emoji of emojisInMessage) {
-        if (!emojis[emoji]) {
-            emojis[emoji] = 0;
-        }
-        emojis[emoji]++;
-    }
-    emojiPerSender[message.sender] += emojisInMessage.join("");
-    messages[i].emojis = emojisInMessage.join("");
-});
 top = Object.entries(emojiPerSender)
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, TOP_COUNT);
 outputLine(`Top emoji senders:`);
-for (const [sender, emojis] of top) {
-    outputLine(`${sender} - ${emojis.length} emojis`);
+for (const [sender, emojiString] of top) {
+    outputLine(`${sender} - ${emojiString.length} emojis`);
 }
 outputLine();
 top = getTopEntries(emojis, TOP_COUNT);
@@ -438,61 +328,14 @@ outputLine();
 // Number of unique emojis
 outputLine("Number of unique emojis:", Object.keys(emojis).length, "\n");
 
-/**
- * Analyze VCF files from a ZIP and count shared phone numbers
- * @param {string} zipFilePath - Path to the ZIP file
- * @returns {Map<string, {count: number, names: Map<string, number>, mostCommonName: string}>}
- */
-function analyzeVcfFiles(zipFilePath) {
-    try {
-        const vcfFiles = extractFilesByExtension(zipFilePath, ".vcf");
-
-        // Map: phone number -> { count, names: Map(name -> count), mostCommonName }
-        const phoneStats = new Map();
-
-        for (const vcfFile of vcfFiles) {
-            const contacts = parseVcf(vcfFile.content);
-
-            for (const contact of contacts) {
-                if (!phoneStats.has(contact.phone)) {
-                    phoneStats.set(contact.phone, {
-                        count: 0,
-                        names: new Map(),
-                        mostCommonName: "",
-                    });
-                }
-
-                const stats = phoneStats.get(contact.phone);
-                stats.count++;
-
-                // Track how many times each name is used for this phone number
-                const nameCount = stats.names.get(contact.name) || 0;
-                stats.names.set(contact.name, nameCount + 1);
-
-                // Update most common name
-                let maxCount = 0;
-                let mostCommon = "";
-                for (const [name, count] of stats.names) {
-                    if (count > maxCount) {
-                        maxCount = count;
-                        mostCommon = name;
-                    }
-                }
-                stats.mostCommonName = mostCommon;
-            }
-        }
-
-        return phoneStats;
-    } catch (error) {
-        console.warn(`Warning: Could not analyze VCF files - ${error.message}`);
-        return new Map();
-    }
-}
-
 // Analyze VCF files if this is a ZIP file
 let vcfAnalysis = new Map();
 if (IMPORT_FILE.toLowerCase().endsWith(".zip")) {
-    vcfAnalysis = analyzeVcfFiles(IMPORT_FILE);
+    try {
+        vcfAnalysis = analyzeVcfFiles(IMPORT_FILE, extractFilesByExtension);
+    } catch (error) {
+        console.warn(`Warning: Could not analyze VCF files - ${error.message}`);
+    }
 }
 
 // VCF analysis output
@@ -534,23 +377,7 @@ if (vcfAnalysis.size > 0) {
 fs.writeFileSync(`${outputDir}/messages.json`, JSON.stringify(messages, null, 4));
 
 // save messages as csv
-if (messages.length) {
-    const headers = Object.keys(messages[0]);
-    const csv = [headers.join(",")];
-    // write each row, but take into account that some messages may have quotes, commas, or newlines
-    for (const message of messages) {
-        const row = [];
-        for (const header of headers) {
-            let value = message[header];
-            if (typeof value === "string") {
-                value = value.replaceAll('"', '""');
-                if (value.includes(",") || value.includes("\n")) {
-                    value = `"${value}"`;
-                }
-            }
-            row.push(value);
-        }
-        csv.push(row.join(","));
-    }
-    fs.writeFileSync(`${outputDir}/messages.csv`, csv.join("\n"));
+const csvContent = generateCsv(messages);
+if (csvContent) {
+    fs.writeFileSync(`${outputDir}/messages.csv`, csvContent);
 }

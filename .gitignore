@@ -7,5 +7,6 @@ grapheme-splitter.js
 *.xlsx
 *.zip
 *.vcf
+*.backup
 
 !common-words.txt
