@@ -13,7 +13,6 @@ const {
     parseChatMessages,
     createBanner,
     enrichMessages,
-    calculateWordStats,
     analyzeVcfFiles,
     generateCsv,
 } = require("./util.js");
@@ -90,14 +89,8 @@ bannerLines.forEach((line) => outputLine(line));
 outputLine();
 
 // Enrich messages with additional metadata
-const {
-    mediaPerSender,
-    questionsPerSender,
-    tagsPerSender,
-    emojiPerSender,
-    emojis,
-    totalMedia,
-} = enrichMessages(messages);
+const { mediaPerSender, questionsPerSender, tagsPerSender, emojiPerSender, emojis, totalMedia } =
+    enrichMessages(messages);
 
 // Top message senders
 const messagesPerSender = {};
