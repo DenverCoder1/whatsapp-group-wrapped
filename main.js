@@ -7,8 +7,7 @@ const GraphemeSplitter = require("./grapheme-splitter.min.js");
 const splitter = new GraphemeSplitter();
 const { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
 const { extractFirstFileByExtension, extractFilesByExtension } = require("./zip-extractor.js");
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
 
 // check if a parameter is passed to the script
 if (process.argv.length < 3) {
@@ -82,7 +81,7 @@ const leftMembers = new Set();
 let pinnedMessages = 0;
 
 function regexEscape(str) {
-    return str.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    return str.replaceAll(/[-/\\^$*+?.()|[\]{}]/g, String.raw`\$&`);
 }
 
 function addMessage(message) {
@@ -203,7 +202,7 @@ for (const line of chat.split("\n")) {
             sender = match[6];
         }
         // convert phone numbers to names if found
-        const senderDigits = (sender ?? "").replace(/\D/g, "");
+        const senderDigits = (sender ?? "").replaceAll(/\D/g, "");
         if (/[\d\s+-]/.test(sender) && TAG_TO_NAME[`@${senderDigits}`]) {
             sender = TAG_TO_NAME[`@${senderDigits}`];
         }
@@ -339,8 +338,8 @@ messages.forEach((message, i) => {
     const hasQuestion =
         /\?(?:\s|$)/.test(message.text) ||
         new RegExp(questionPhrases.map(regexEscape).join("|")).test(message.text) ||
-        questionIfFirstWord.some((w) => new RegExp(`^${w}\\s`, "i").test(message.text)) ||
-        ["who", "what", "where", "when", "why", "how"].some((w) => message.text.toLowerCase() === w);
+        questionIfFirstWord.some((w) => new RegExp(String.raw`^${w}\s`, "i").test(message.text)) ||
+        ["who", "what", "where", "when", "why", "how"].includes(message.text.toLowerCase());
     if (hasQuestion) {
         questionsPerSender[message.sender]++;
     }
@@ -508,14 +507,14 @@ messages
         if (message.text.includes("omitted")) {
             return;
         }
-        const messageWords = message.text.replace(/\s+<This message was edited>/g, "").split(/\s+/);
+        const messageWords = message.text.replaceAll(/\s+<This message was edited>/g, "").split(/\s+/);
         for (const word of messageWords) {
             // remove punctuation from either side of the word and make it lowercase
             const cleanWord = word
                 .toLowerCase()
-                .replace(/^[^a-z']+/g, "")
-                .replace(/[^a-z']+$/g, "")
-                .replace(/’/g, "'");
+                .replaceAll(/^[^a-z']+/g, "")
+                .replaceAll(/[^a-z']+$/g, "")
+                .replaceAll('’', "'");
             // ignore words that contain anything other than letters and apostrophes
             if (!/^[a-z'’]+$/.test(cleanWord)) {
                 continue;
@@ -615,13 +614,13 @@ function parseVcf(vcfContent) {
         let phone = "";
 
         // Extract FN (formatted name) - this is usually the display name
-        const fnMatch = vcard.match(/FN:(.*)/);
+        const fnMatch = /FN:(.*)/.exec(vcard);
         if (fnMatch) {
             name = fnMatch[1].trim();
         }
 
         // Extract phone number from TEL field
-        const telMatch = vcard.match(/TEL[^:]*:([+\d\s\-()]+)/);
+        const telMatch = /TEL[^:]*:([+\d\s\-()]+)/.exec(vcard);
         if (telMatch) {
             // Normalize phone number - remove spaces, dashes, parentheses
             phone = telMatch[1].replaceAll(/[\s\-()]/g, "");
@@ -740,7 +739,7 @@ if (messages.length) {
         for (const header of headers) {
             let value = message[header];
             if (typeof value === "string") {
-                value = value.replace(/"/g, '""');
+                value = value.replaceAll('"', '""');
                 if (value.includes(",") || value.includes("\n")) {
                     value = `"${value}"`;
                 }
