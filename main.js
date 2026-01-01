@@ -6,6 +6,9 @@
 const GraphemeSplitter = require("./grapheme-splitter.min.js");
 const splitter = new GraphemeSplitter();
 const { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
+const { extractFirstFileByExtension, extractFilesByExtension } = require("./zip-extractor.js");
+const fs = require("fs");
+const path = require("path");
 
 // check if a parameter is passed to the script
 if (process.argv.length < 3) {
@@ -18,22 +21,33 @@ const IMPORT_FILE = process.argv[2];
 
 // create an output directory to store the results
 const outputDir = "output";
-require("fs").mkdirSync(outputDir, { recursive: true });
+fs.mkdirSync(outputDir, { recursive: true });
 
-const chat = require("fs")
-    .readFileSync(IMPORT_FILE, "utf8")
-    .replace(/[\u202f\u200e]/g, " ")
-    .replace(/\u200e/g, "");
+let chat;
+
+// Handle .zip files
+if (IMPORT_FILE.toLowerCase().endsWith(".zip")) {
+    try {
+        const txtContent = extractFirstFileByExtension(IMPORT_FILE, ".txt");
+        chat = txtContent.replaceAll(/[\u202f\u200e]/g, " ");
+    } catch (error) {
+        console.error(error.message);
+        process.exit(1);
+    }
+} else {
+    // Handle regular .txt files
+    chat = fs.readFileSync(IMPORT_FILE, "utf8").replaceAll(/[\u202f\u200e]/g, " ");
+}
 
 const commonWords = new Set(
-    require("fs")
+    fs
         .readFileSync("common-words.txt", "utf8")
         .split("\n")
         .map((w) => w.toLowerCase())
 );
 
 // create an output file stream to write the results
-const output = require("fs").createWriteStream(`${outputDir}/results.txt`, { flags: "w" });
+const output = fs.createWriteStream(`${outputDir}/results.txt`, { flags: "w" });
 
 /*
  * Take 1 or more args and print them to output and log them to console
@@ -73,6 +87,7 @@ function addMessage(message) {
     if (message.date < FILTERS.startDate || message.date > FILTERS.endDate) {
         return;
     }
+    // parse member joins
     if (
         new RegExp(
             [
@@ -185,7 +200,7 @@ if (currentMessage) {
 }
 
 // save messages as array of text only
-require("fs").writeFileSync(
+fs.writeFileSync(
     `${outputDir}/messages-text.json`,
     JSON.stringify(
         messages.map((m) => m.text),
@@ -542,8 +557,136 @@ outputLine();
 // Number of unique emojis
 outputLine("Number of unique emojis:", Object.keys(emojis).length, "\n");
 
+/**
+ * Parse a VCF file and extract phone numbers and names
+ * @param {string} vcfContent - Content of a VCF file
+ * @returns {Array<{phone: string, name: string}>} Array of contacts
+ */
+function parseVcf(vcfContent) {
+    const contacts = [];
+    const vcards = vcfContent.split(/(?=BEGIN:VCARD)/);
+
+    for (const vcard of vcards) {
+        if (!vcard.trim()) continue;
+
+        let name = "";
+        let phone = "";
+
+        // Extract FN (formatted name) - this is usually the display name
+        const fnMatch = vcard.match(/FN:(.*)/);
+        if (fnMatch) {
+            name = fnMatch[1].trim();
+        }
+
+        // Extract phone number from TEL field
+        const telMatch = vcard.match(/TEL[^:]*:([+\d\s\-()]+)/);
+        if (telMatch) {
+            // Normalize phone number - remove spaces, dashes, parentheses
+            phone = telMatch[1].replaceAll(/[\s\-()]/g, "");
+        }
+
+        if (phone && name) {
+            contacts.push({ phone, name });
+        }
+    }
+
+    return contacts;
+}
+
+/**
+ * Analyze VCF files from a ZIP and count shared phone numbers
+ * @param {string} zipFilePath - Path to the ZIP file
+ * @returns {Map<string, {count: number, names: Map<string, number>, mostCommonName: string}>}
+ */
+function analyzeVcfFiles(zipFilePath) {
+    try {
+        const vcfFiles = extractFilesByExtension(zipFilePath, ".vcf");
+
+        // Map: phone number -> { count, names: Map(name -> count), mostCommonName }
+        const phoneStats = new Map();
+
+        for (const vcfFile of vcfFiles) {
+            const contacts = parseVcf(vcfFile.content);
+
+            for (const contact of contacts) {
+                if (!phoneStats.has(contact.phone)) {
+                    phoneStats.set(contact.phone, {
+                        count: 0,
+                        names: new Map(),
+                        mostCommonName: "",
+                    });
+                }
+
+                const stats = phoneStats.get(contact.phone);
+                stats.count++;
+
+                // Track how many times each name is used for this phone number
+                const nameCount = stats.names.get(contact.name) || 0;
+                stats.names.set(contact.name, nameCount + 1);
+
+                // Update most common name
+                let maxCount = 0;
+                let mostCommon = "";
+                for (const [name, count] of stats.names) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        mostCommon = name;
+                    }
+                }
+                stats.mostCommonName = mostCommon;
+            }
+        }
+
+        return phoneStats;
+    } catch (error) {
+        console.warn(`Warning: Could not analyze VCF files - ${error.message}`);
+        return new Map();
+    }
+}
+
+// Analyze VCF files if this is a ZIP file
+let vcfAnalysis = new Map();
+if (IMPORT_FILE.toLowerCase().endsWith(".zip")) {
+    vcfAnalysis = analyzeVcfFiles(IMPORT_FILE);
+}
+
+// VCF analysis output
+if (vcfAnalysis.size > 0) {
+    // Sort by count (most shared first)
+    const sortedPhones = Array.from(vcfAnalysis.entries()).sort((a, b) => b[1].count - a[1].count);
+
+    outputLine(`Total unique phone numbers sent as contacts: ${sortedPhones.length}`);
+    outputLine();
+
+    // Show most shared contacts
+    const topShared = sortedPhones.slice(0, Math.min(20, sortedPhones.length));
+    outputLine(`Top ${topShared.length} most shared contacts:`);
+    for (let i = 0; i < topShared.length; i++) {
+        const [phone, stats] = topShared[i];
+        outputLine(`${i + 1}. ${stats.mostCommonName} (${phone}) - shared ${stats.count} times`);
+
+        // If there are multiple names for this number, show them
+        if (stats.names.size > 1) {
+            const nameList = Array.from(stats.names.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, count]) => `${name} (${count})`)
+                .join(", ");
+            outputLine(`   Also known as: ${nameList}`);
+        }
+    }
+    outputLine();
+
+    // Statistics
+    const multipleShareCount = sortedPhones.filter(([_, stats]) => stats.count > 1).length;
+    const multipleNameCount = sortedPhones.filter(([_, stats]) => stats.names.size > 1).length;
+
+    outputLine(`Contacts shared by multiple people: ${multipleShareCount}`);
+    outputLine(`Contacts with different names: ${multipleNameCount}`);
+    outputLine();
+}
+
 // save messages as json
-require("fs").writeFileSync(`${outputDir}/messages.json`, JSON.stringify(messages, null, 4));
+fs.writeFileSync(`${outputDir}/messages.json`, JSON.stringify(messages, null, 4));
 
 // save messages as csv
 if (messages.length) {
@@ -564,5 +707,5 @@ if (messages.length) {
         }
         csv.push(row.join(","));
     }
-    require("fs").writeFileSync(`${outputDir}/messages.csv`, csv.join("\n"));
+    fs.writeFileSync(`${outputDir}/messages.csv`, csv.join("\n"));
 }

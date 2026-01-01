@@ -27,6 +27,12 @@ Replace the path with the path to the exported chat file. If, for example, the c
 node main.js 'chat.txt'
 ```
 
+You can also provide a zip file containing the chat export and contact cards (.vcf files). The script will extract the chat text file from the zip and process it as well as provide an analysis of contacts mentioned in the chat.
+
+```bash
+node main.js 'path/to/WhatsApp Chat with Group Name.zip'
+```
+
 5. The script will output a summary of the chat to the terminal
 
 ## Example output
