@@ -1,5 +1,6 @@
 const GraphemeSplitter = require("./grapheme-splitter.min.js");
 const splitter = new GraphemeSplitter();
+const path = require("node:path");
 
 /**
  * Escape special regex characters in a string
@@ -373,6 +374,7 @@ function loadChatFile(filePath, extractFirstFileByExtension) {
  * @returns {string} - Extracted group name or empty string
  */
 function extractGroupName(fileName) {
+    fileName = path.basename(fileName);
     const match = fileName.match(/WhatsApp Chat with (.+?)(?: \(\d+\))?\.txt$/);
     return match ? match[1] : "";
 }

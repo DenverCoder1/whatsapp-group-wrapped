@@ -10,3 +10,6 @@ grapheme-splitter.js
 *.backup
 
 !common-words.txt
+
+!test/WhatsApp Chat with Pomegranate Community/*.txt
+!test/WhatsApp Chat with Pomegranate Community/*.vcf
