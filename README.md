@@ -13,26 +13,14 @@ For a user-friendly web interface:
 3. Start a PHP server in the project directory:
 
 ```bash
-php -S localhost:8000
-```
-
-Or for larger files, use the custom php.ini:
-
-```bash
 php -S localhost:8000 -c php.ini
 ```
 
-4. Open your browser to `http://localhost:8000`
-5. Upload your WhatsApp chat export (.txt or .zip file)
-6. Configure your date range and top count
-7. Click "Generate Wrapped" to see your stats
-8. Download the results if desired
-
-The web interface allows you to:
-- Upload files via drag & drop or file picker
-- Customize date ranges and settings per analysis
-- View results in a formatted display
-- Download the generated report
+1. Open your browser to `http://localhost:8000`
+2. Upload your WhatsApp chat export (.txt or .zip file)
+3. Configure your date range and top count
+4. Click "Generate Wrapped" to see your stats
+5. Download the results if desired
 
 **Note for large files:** If you encounter upload errors with large chat exports, use the command with `-c php.ini` as shown above. The included `php.ini` file increases upload limits to 100MB and allows longer processing times.
 
@@ -74,19 +62,6 @@ node script/main.js 'path/to/WhatsApp Chat with Group Name.zip'
 ```
 
 5. The script will output a summary of the chat to the terminal and save results to the `output/` directory
-
-### Environment Variable Overrides
-
-You can override the date range and top count without modifying `config.js` by using environment variables:
-
-```bash
-START_DATE=2025-01-01 END_DATE=2025-12-31 TOP_COUNT=50 node main.js 'chat.txt'
-```
-
-This is especially useful for:
-- Running the script with different parameters without changing the config
-- Automation and scripting
-- The PHP web interface (which uses this method automatically)
 
 ## Example output
 
@@ -238,6 +213,14 @@ Top 6 most shared contacts:
 Contacts shared by multiple people: 68
 Contacts with different names: 65
 ```
+
+## What's next?
+
+Upcoming features and improvements may include:
+
+- Support for more languages
+- Generate an image or video summary of the stats for sharing
+- More detailed analytics and visualizations
 
 ## License
 
