@@ -13,7 +13,7 @@ For a user-friendly web interface:
 3. Start a PHP server in the project directory:
 
 ```bash
-php -S localhost:8000 -c php.ini
+php -S localhost:8000 -t api -c php.ini
 ```
 
 1. Open your browser to `http://localhost:8000`

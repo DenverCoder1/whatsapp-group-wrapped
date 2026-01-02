@@ -10,7 +10,7 @@ header('Content-Type: application/json');
 // Handle download requests
 if (isset($_GET['download'])) {
     $filename = basename($_GET['download']);
-    $filepath = __DIR__ . '/output/' . $filename;
+    $filepath = '/tmp/output/' . $filename;
 
     if (file_exists($filepath)) {
         header('Content-Type: text/plain');
@@ -88,33 +88,21 @@ if (!validateDate($startDate) || !validateDate($endDate)) {
 }
 
 // Create uploads directory if it doesn't exist
-$uploadDir = __DIR__ . '/uploads';
+$uploadDir = '/tmp/uploads';
 if (!is_dir($uploadDir)) {
-    if (!mkdir($uploadDir, 0755, true)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to create uploads directory. Check permissions.']);
+    if (!mkdir($uploadDir, 0777, true)) {
+        echo json_encode(['success' => false, 'error' => 'Failed to create uploads directory.']);
         exit;
     }
-}
-
-// Check if directory is writable
-if (!is_writable($uploadDir)) {
-    echo json_encode(['success' => false, 'error' => 'Uploads directory is not writable. Run: chmod 755 ' . $uploadDir]);
-    exit;
 }
 
 // Create output directory if it doesn't exist
-$outputDir = __DIR__ . '/output';
+$outputDir = '/tmp/output';
 if (!is_dir($outputDir)) {
-    if (!mkdir($outputDir, 0755, true)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to create output directory. Check permissions.']);
+    if (!mkdir($outputDir, 0777, true)) {
+        echo json_encode(['success' => false, 'error' => 'Failed to create output directory.']);
         exit;
     }
-}
-
-// Check if output directory is writable
-if (!is_writable($outputDir)) {
-    echo json_encode(['success' => false, 'error' => 'Output directory is not writable. Run: chmod 755 ' . $outputDir]);
-    exit;
 }
 
 // Get file info
@@ -147,9 +135,11 @@ if (!move_uploaded_file($uploadedFile['tmp_name'], $uploadedFilePath)) {
 $outputFileName = 'results_' . $uniqueId . '.txt';
 $outputFilePath = $outputDir . '/' . $outputFileName;
 
+$scriptPath = dirname(__DIR__) . '/script/main.js';
+
 $command = sprintf(
-    'cd %s && node script/main.js %s %s %s %s > %s 2>&1',
-    escapeshellarg(__DIR__),
+    'node %s %s %s %s %s > %s 2>&1',
+    escapeshellarg($scriptPath),
     escapeshellarg($uploadedFilePath),
     escapeshellarg($startDate),
     escapeshellarg($endDate),

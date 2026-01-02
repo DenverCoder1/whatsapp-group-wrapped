@@ -51,8 +51,10 @@ if (process.argv[3]) {
 }
 
 // create an output directory to store the results
-const outputDir = path.join(__dirname, "..", "output");
-fs.mkdirSync(outputDir, { recursive: true });
+const outputDir = process.env.VERCEL ? '/tmp/output' : path.join(__dirname, "..", "output");
+if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+}
 
 // Load chat file
 let chat, chatFileName, groupName;

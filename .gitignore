@@ -17,3 +17,6 @@ grapheme-splitter.js
 # Upload and output directories
 uploads/
 output/
+
+# Deployment
+.vercel
