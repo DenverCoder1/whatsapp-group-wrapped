@@ -4,18 +4,58 @@ Create a summary of stats from a WhatsApp group export
 
 ## Usage
 
+### Web Interface (PHP)
+
+For a user-friendly web interface:
+
+1. Make sure you have PHP and Node.js installed on your computer
+2. Copy `script/example.config.js` to `script/config.js` (the web interface will temporarily override some settings)
+3. Start a PHP server in the project directory:
+
+```bash
+php -S localhost:8000
+```
+
+Or for larger files, use the custom php.ini:
+
+```bash
+php -S localhost:8000 -c php.ini
+```
+
+4. Open your browser to `http://localhost:8000`
+5. Upload your WhatsApp chat export (.txt or .zip file)
+6. Configure your date range and top count
+7. Click "Generate Wrapped" to see your stats
+8. Download the results if desired
+
+The web interface allows you to:
+- Upload files via drag & drop or file picker
+- Customize date ranges and settings per analysis
+- View results in a formatted display
+- Download the generated report
+
+**Note for large files:** If you encounter upload errors with large chat exports, use the command with `-c php.ini` as shown above. The included `php.ini` file increases upload limits to 100MB and allows longer processing times.
+
+### Command Line (Node.js)
+
 1. Export a WhatsApp group chat from the WhatsApp app on your phone:
     - Open the group chat
     - Tap the 3 dots at the top, then "More > Export chat"
     - Choose "Without media"
     - Share the chat export to your computer
 2. Make sure `node` is installed on your computer (https://nodejs.org/)
-3. Copy `example.config.js` to `config.js` and fill in values as needed:
+3. Copy `script/example.config.js` to `script/config.js` and fill in values as needed:
     - Set `FILTERS.startDate` to contain the date you want to start counting messages from (ensure the year is correct)
     - Set `FILTERS.endDate` to contain the date you want to stop counting messages from
     - Set `TOP_COUNT` to the number of entries to show in the top lists
     - Optionally, populate `TAG_TO_NAME` with a mapping of phone numbers to names using the provided format as an example
-4. Run the following command in your terminal:
+4. Run the script with the path to your exported chat file:
+
+```bash
+node script/main.js 'path/to/WhatsApp Chat with Group Name.txt'
+```
+
+Or from the `script` directory:
 
 ```bash
 node main.js 'path/to/WhatsApp Chat with Group Name.txt'
@@ -24,16 +64,29 @@ node main.js 'path/to/WhatsApp Chat with Group Name.txt'
 Replace the path with the path to the exported chat file. If, for example, the chat file is in the same directory as the script and is named `chat.txt`, you would run:
 
 ```bash
-node main.js 'chat.txt'
+node script/main.js 'chat.txt'
 ```
 
 You can also provide a zip file containing the chat export and contact cards (.vcf files). The script will extract the chat text file from the zip to process as well as provide an analysis of contact cards shared in the chat.
 
 ```bash
-node main.js 'path/to/WhatsApp Chat with Group Name.zip'
+node script/main.js 'path/to/WhatsApp Chat with Group Name.zip'
 ```
 
-5. The script will output a summary of the chat to the terminal
+5. The script will output a summary of the chat to the terminal and save results to the `output/` directory
+
+### Environment Variable Overrides
+
+You can override the date range and top count without modifying `config.js` by using environment variables:
+
+```bash
+START_DATE=2025-01-01 END_DATE=2025-12-31 TOP_COUNT=50 node main.js 'chat.txt'
+```
+
+This is especially useful for:
+- Running the script with different parameters without changing the config
+- Automation and scripting
+- The PHP web interface (which uses this method automatically)
 
 ## Example output
 

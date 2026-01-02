@@ -1,9 +1,9 @@
 /**
  * Set config values in config.js
- * Run script with: `node main.js`
+ * Run script with: `node main.js <file> [startDate] [endDate] [topCount]`
  */
 
-const { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
+let { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
 const { extractFirstFileByExtension, extractFilesByExtension } = require("./zip-extractor.js");
 const {
     detectChatFormat,
@@ -26,6 +26,7 @@ const {
     generateCsv,
 } = require("./util.js");
 const fs = require("node:fs");
+const path = require("node:path");
 
 // check if a parameter is passed to the script
 if (process.argv.length < 3) {
@@ -36,8 +37,21 @@ if (process.argv.length < 3) {
 // read the chat file
 const IMPORT_FILE = process.argv[2];
 
+// Optional arguments to override config: startDate, endDate, topCount
+if (process.argv[3]) {
+    const startDate = process.argv[3];
+    const endDate = process.argv[4] || FILTERS.endDate.toISOString().split('T')[0];
+    const topCount = process.argv[5] ? Number.parseInt(process.argv[5], 10) : TOP_COUNT;
+    
+    FILTERS = {
+        startDate: new Date(startDate + 'T00:00:00'),
+        endDate: new Date(endDate + 'T23:59:59'),
+    };
+    TOP_COUNT = topCount;
+}
+
 // create an output directory to store the results
-const outputDir = "output";
+const outputDir = path.join(__dirname, "..", "output");
 fs.mkdirSync(outputDir, { recursive: true });
 
 // Load chat file
@@ -54,7 +68,7 @@ try {
 
 const commonWords = new Set(
     fs
-        .readFileSync("common-words.txt", "utf8")
+        .readFileSync(path.join(__dirname, "common-words.txt"), "utf8")
         .split("\n")
         .map((w) => w.toLowerCase())
 );

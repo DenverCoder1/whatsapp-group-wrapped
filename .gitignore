@@ -13,3 +13,7 @@ grapheme-splitter.js
 
 !test/WhatsApp Chat with Pomegranate Community/*.txt
 !test/WhatsApp Chat with Pomegranate Community/*.vcf
+
+# Upload and output directories
+uploads/
+output/
