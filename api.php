@@ -148,7 +148,7 @@ $outputFileName = 'results_' . $uniqueId . '.txt';
 $outputFilePath = $outputDir . '/' . $outputFileName;
 
 $command = sprintf(
-    'cd %s && node main.js %s %s %s %s > %s 2>&1',
+    'cd %s && node script/main.js %s %s %s %s > %s 2>&1',
     escapeshellarg(__DIR__),
     escapeshellarg($uploadedFilePath),
     escapeshellarg($startDate),
