@@ -1,3 +1,9 @@
+<?php
+// File routing for Vercel deployment
+require_once __DIR__ . '/vercel.php';
+
+$domain = 'whatsappwrapped.demolab.com';
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,6 +11,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Group Wrapped</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="WhatsApp Group Wrapped">
+    <meta name="description" content="Analyze your WhatsApp group chats and get fun statistics about your conversations. Upload your chat export and discover insights about your messaging patterns.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="<?= "https://$domain/" ?>">
+    <meta property="og:title" content="WhatsApp Group Wrapped">
+    <meta property="og:description" content="Analyze your WhatsApp group chats and get fun statistics about your conversations. Upload your chat export and discover insights about your messaging patterns.">
+    <meta property="og:image" content="<?= "https://$domain/images/whatsapp-preview.png" ?>">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="<?= "https://$domain/" ?>">
+    <meta property="twitter:title" content="WhatsApp Group Wrapped">
+    <meta property="twitter:description" content="Analyze your WhatsApp group chats and get fun statistics about your conversations. Upload your chat export and discover insights about your messaging patterns.">
+    <meta property="twitter:image" content="<?= "https://$domain/images/whatsapp-preview.png" ?>">
+
     <style>
         * {
             margin: 0;
@@ -573,7 +601,7 @@
                 const isRTL = jsonData.metadata?.language?.rtl || false;
                 console.log('JSON sections:', sections.length, sections);
                 console.log('Language RTL:', isRTL);
-                
+
                 // Set RTL classes
                 if (isRTL) {
                     gallery.classList.add('rtl');
@@ -582,12 +610,12 @@
                     gallery.classList.remove('rtl');
                     resultsContent.classList.remove('rtl');
                 }
-                
+
                 if (sections.length === 0) {
                     gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No sections found to display</p>';
                     return;
                 }
-                
+
                 sections.forEach((section, index) => {
                     try {
                         console.log(`Generating card ${index + 1}:`, section.title);
@@ -638,22 +666,66 @@
             const maxItems = Math.min(section.items.length, 5);
 
             // Each card gets a unique bright color - rotate through all colors
-            const colorSchemes = [
-                { bg: '#FF6B9D', text: '#1a1a1a' },      // Bright pink
-                { bg: '#4ECDC4', text: '#1a1a1a' },      // Turquoise
-                { bg: '#FFD93D', text: '#1a1a1a' },      // Bright yellow
-                { bg: '#FF8C42', text: '#1a1a1a' },      // Bright orange
-                { bg: '#A8E6CF', text: '#1a1a1a' },      // Pastel green
-                { bg: '#BB9AF7', text: '#1a1a1a' },      // Lavender
-                { bg: '#FF6B6B', text: '#1a1a1a' },      // Coral red
-                { bg: '#FFB6C1', text: '#1a1a1a' },      // Light pink
-                { bg: '#87CEEB', text: '#1a1a1a' },      // Sky blue
-                { bg: '#98D8C8', text: '#1a1a1a' },      // Seafoam
-                { bg: '#F7DC6F', text: '#1a1a1a' },      // Golden yellow
-                { bg: '#F6A6B2', text: '#1a1a1a' },      // Soft rose
-                { bg: '#95E1D3', text: '#1a1a1a' },      // Mint green
-                { bg: '#C3B1E1', text: '#1a1a1a' },      // Light purple
-                { bg: '#FFA07A', text: '#1a1a1a' }       // Light salmon
+            const colorSchemes = [{
+                    bg: '#FF6B9D',
+                    text: '#1a1a1a'
+                }, // Bright pink
+                {
+                    bg: '#4ECDC4',
+                    text: '#1a1a1a'
+                }, // Turquoise
+                {
+                    bg: '#FFD93D',
+                    text: '#1a1a1a'
+                }, // Bright yellow
+                {
+                    bg: '#FF8C42',
+                    text: '#1a1a1a'
+                }, // Bright orange
+                {
+                    bg: '#A8E6CF',
+                    text: '#1a1a1a'
+                }, // Pastel green
+                {
+                    bg: '#BB9AF7',
+                    text: '#1a1a1a'
+                }, // Lavender
+                {
+                    bg: '#FF6B6B',
+                    text: '#1a1a1a'
+                }, // Coral red
+                {
+                    bg: '#FFB6C1',
+                    text: '#1a1a1a'
+                }, // Light pink
+                {
+                    bg: '#87CEEB',
+                    text: '#1a1a1a'
+                }, // Sky blue
+                {
+                    bg: '#98D8C8',
+                    text: '#1a1a1a'
+                }, // Seafoam
+                {
+                    bg: '#F7DC6F',
+                    text: '#1a1a1a'
+                }, // Golden yellow
+                {
+                    bg: '#F6A6B2',
+                    text: '#1a1a1a'
+                }, // Soft rose
+                {
+                    bg: '#95E1D3',
+                    text: '#1a1a1a'
+                }, // Mint green
+                {
+                    bg: '#C3B1E1',
+                    text: '#1a1a1a'
+                }, // Light purple
+                {
+                    bg: '#FFA07A',
+                    text: '#1a1a1a'
+                } // Light salmon
             ];
 
             // Use a different color for each section based on its index
@@ -662,13 +734,13 @@
             const colors = colorSchemes[colorIndex];
 
             let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-            
+
             // Solid background
             svg += `<rect width="${width}" height="${height}" fill="${colors.bg}" rx="0"/>`;
 
             // Header section with icon and title - bigger and more spaced out
             svg += `<text x="${width / 2}" y="120" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.icon)}</text>`;
-            
+
             // Title - use foreignObject for proper RTL support
             if (isRTL) {
                 svg += `<foreignObject x="0" y="150" width="${width}" height="60">
@@ -685,7 +757,7 @@
             const showNumbers = section.isRanked || false;
             section.items.slice(0, maxItems).forEach((item, index) => {
                 const itemY = startY + (index * itemHeight);
-                
+
                 // Rank circle with dark background - bigger (only for "Top" lists)
                 if (showNumbers) {
                     const circleX = isRTL ? width - padding - 25 : padding + 25;
@@ -694,27 +766,27 @@
                 }
 
                 // Name and value on separate lines
-                const nameX = isRTL 
-                    ? (showNumbers ? width - padding - 80 : width - padding - 25)
-                    : (showNumbers ? padding + 80 : padding + 25);
+                const nameX = isRTL ?
+                    (showNumbers ? width - padding - 80 : width - padding - 25) :
+                    (showNumbers ? padding + 80 : padding + 25);
                 const textAnchor = isRTL ? 'end' : 'start';
                 let displayName = item.name;
                 const maxNameLength = showNumbers ? 25 : 33;
                 if (displayName.length > maxNameLength) {
                     displayName = displayName.substring(0, maxNameLength) + '...';
                 }
-                
+
                 // Use foreignObject for RTL text to get proper HTML/CSS support
                 if (isRTL) {
                     const textWidth = showNumbers ? (width - 120 - padding) : (width - 100);
-                    
+
                     // Name on first line
                     svg += `<foreignObject x="50" y="${itemY - 35}" width="${textWidth}" height="35">
                         <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end;">
                             <div style="font-family: Arial, sans-serif; font-size: 30px; font-weight: 600; color: ${colors.text}; direction: rtl; text-align: right; padding-right: 10px;">${escapeXml(displayName)}</div>
                         </div>
                     </foreignObject>`;
-                    
+
                     // Value on second line
                     svg += `<foreignObject x="50" y="${itemY + 5}" width="${textWidth}" height="35">
                         <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end;">
@@ -731,7 +803,7 @@
 
             // Footer decoration
             svg += `<rect x="0" y="${height - 50}" width="${width}" height="50" fill="rgba(0,0,0,0.1)"/>`;
-            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed">whatsappwrapped.demolab.com</text>`;
+            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed"><?= $domain ?></text>`;
 
             svg += `</svg>`;
 
@@ -762,7 +834,7 @@
                 // Create an image element from the SVG data URI
                 const img = new Image();
                 img.src = dataUri;
-                
+
                 await new Promise((resolve, reject) => {
                     img.onload = resolve;
                     img.onerror = reject;
@@ -779,7 +851,7 @@
                 const blob = await new Promise(resolve => {
                     canvas.toBlob(resolve, 'image/png');
                 });
-                
+
                 // Copy to clipboard
                 await navigator.clipboard.write([
                     new ClipboardItem({
