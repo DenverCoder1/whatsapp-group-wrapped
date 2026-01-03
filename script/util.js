@@ -278,13 +278,15 @@ function extractWords(text) {
 
     for (const word of messageWords) {
         // Remove punctuation from either side of the word and make it lowercase
+        // Support Unicode letters (Latin, Hebrew, Arabic, Cyrillic, etc.)
         const cleanWord = word
             .toLowerCase()
-            .replaceAll(/^[^a-z']+/g, "")
-            .replaceAll(/[^a-z']+$/g, "")
+            .replaceAll(/^[^\p{L}']+/gu, "")
+            .replaceAll(/[^\p{L}']+$/gu, "")
             .replaceAll("'", "'");
-        // Ignore words that contain anything other than letters and apostrophes
-        if (/^[a-z']+$/.test(cleanWord)) {
+        // Ignore words that contain anything other than letters (any script) and apostrophes
+        // Also ignore single quotes by themselves
+        if (/^[\p{L}']+$/u.test(cleanWord) && cleanWord !== "'") {
             cleanWords.push(cleanWord);
         }
     }

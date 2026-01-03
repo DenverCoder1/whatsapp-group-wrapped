@@ -89,12 +89,20 @@ try {
     process.exit(1);
 }
 
-const commonWords = new Set(
-    fs
-        .readFileSync(path.join(__dirname, "common-words.txt"), "utf8")
-        .split("\n")
-        .map((w) => w.toLowerCase())
-);
+const commonWords = new Set();
+
+// Load all common words files (English, Hebrew, etc.)
+const commonWordsFiles = ['common-words-en.txt', 'common-words-he.txt'];
+for (const file of commonWordsFiles) {
+    const filePath = path.join(__dirname, file);
+    if (fs.existsSync(filePath)) {
+        const words = fs.readFileSync(filePath, "utf8")
+            .split("\n")
+            .map((w) => w.toLowerCase())
+            .filter((w) => w.length > 0);
+        words.forEach(w => commonWords.add(w));
+    }
+}
 
 // create an output file stream to write the results
 const output = fs.createWriteStream(`${outputDir}/results.txt`, { flags: "w" });
@@ -313,7 +321,8 @@ const { totalWords, messagesWithWords, words, uncommonWords } = calculateWordSta
 const avgWordsPerMessage = Math.round((totalWords / messagesWithWords) * 100) / 100;
 outputLine("Total number of words sent:", totalWords, "\n");
 outputLine("Average number of words per message:", avgWordsPerMessage, "\n");
-// show top
+
+// show top common words
 top = Object.entries(words)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
@@ -322,7 +331,9 @@ for (const [word, count] of top) {
     outputLine(`${word} - ${count} ${pluralize(count, 'time')}`);
 }
 outputLine();
-// show top uncommon
+addJsonSection('Top Words', top.map(([word, count]) => ({ name: word, value: `${count} ${pluralize(count, 'time')}` })), '💬');
+
+// show top uncommon words
 const topUncommon = Object.entries(uncommonWords)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
@@ -331,17 +342,13 @@ for (const [word, count] of topUncommon) {
     outputLine(`${word} - ${count} ${pluralize(count, 'time')}`);
 }
 outputLine();
+addJsonSection('Top Uncommon Words', topUncommon.map(([word, count]) => ({ name: word, value: `${count} ${pluralize(count, 'time')}` })), '✨');
 
 // Add Word Stats section
 const wordStats = [
     { name: 'Total words sent', value: totalWords.toString() },
     { name: 'Words per message', value: avgWordsPerMessage.toString() }
 ];
-// Add top 3 uncommon words
-const top3Uncommon = topUncommon.slice(0, 3);
-top3Uncommon.forEach(([word, count], i) => {
-    wordStats.push({ name: `#${i + 1} uncommon word`, value: `${word} (${count}×)` });
-});
 addJsonSection('Word Stats', wordStats, '📝');
 
 // Top emoji senders, Most common emojis

@@ -9,7 +9,7 @@ grapheme-splitter.js
 *.vcf
 *.backup
 
-!common-words.txt
+!common-words*.txt
 
 !test/WhatsApp Chat with Pomegranate Community/*.txt
 !test/WhatsApp Chat with Pomegranate Community/*.vcf
