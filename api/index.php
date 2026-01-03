@@ -458,7 +458,10 @@ $domain = 'whatsappwrapped.demolab.com';
         <div class="results" id="results">
             <div class="results-header">
                 <h2>📊 Results</h2>
-                <a href="#" class="download-btn" id="downloadBtn">⬇️ Download Text</a>
+                <div>
+                    <a href="#" class="download-btn" id="downloadImagesBtn" style="margin-right: 10px;">🖼️ Download Images</a>
+                    <a href="#" class="download-btn" id="downloadBtn">⬇️ Download Text</a>
+                </div>
             </div>
             <div class="gallery" id="gallery"></div>
             <div class="text-results">
@@ -485,6 +488,7 @@ $domain = 'whatsappwrapped.demolab.com';
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         const form = document.getElementById('uploadForm');
         const fileInput = document.getElementById('chatFile');
@@ -495,7 +499,110 @@ $domain = 'whatsappwrapped.demolab.com';
         const error = document.getElementById('error');
         const submitBtn = document.getElementById('submitBtn');
         const downloadBtn = document.getElementById('downloadBtn');
+        const downloadImagesBtn = document.getElementById('downloadImagesBtn');
         const dropZone = document.getElementById('dropZone');
+        let currentSvgDataUris = [];
+        let currentMetadata = null;
+
+        // Download all images as PNG files in a zip
+        downloadImagesBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            if (currentSvgDataUris.length === 0) {
+                alert('No images to download');
+                return;
+            }
+
+            try {
+                downloadImagesBtn.textContent = '⏳ Creating zip...';
+                downloadImagesBtn.style.pointerEvents = 'none';
+
+                const zip = new JSZip();
+                const imgFolder = zip.folder('whatsapp-wrapped-images');
+
+                // Convert each SVG to PNG and add to zip
+                for (let i = 0; i < currentSvgDataUris.length; i++) {
+                    const svgDataUri = currentSvgDataUris[i];
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+
+                    await new Promise((resolve, reject) => {
+                        img.onload = () => {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+
+                            // Convert to PNG blob
+                            canvas.toBlob((blob) => {
+                                if (blob) {
+                                    imgFolder.file(`image-${i + 1}.png`, blob);
+                                    resolve();
+                                } else {
+                                    reject(new Error('Failed to convert image'));
+                                }
+                            }, 'image/png');
+                        };
+                        img.onerror = reject;
+                        img.src = svgDataUri;
+                    });
+                }
+
+                // Generate zip file
+                const zipBlob = await zip.generateAsync({
+                    type: 'blob'
+                });
+
+                // Create download link
+                const url = URL.createObjectURL(zipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+
+                // Use metadata for filename if available
+                let filename = 'whatsapp-wrapped';
+                if (currentMetadata) {
+                    // Get group name and sanitize it
+                    let groupName = '';
+                    if (currentMetadata.groupName) {
+                        // Replace special characters with dashes, convert to lowercase
+                        groupName = currentMetadata.groupName
+                            .toLowerCase()
+                            .replace(/([.\/\\?%*:|"<>]|\s)/g, '-') // Replace special characters with dashes
+                            .replace(/^-+|-+$/g, ''); // Remove leading/trailing dashes
+                    }
+
+                    const startDate = currentMetadata.startDate ? new Date(currentMetadata.startDate) : null;
+                    const endDate = currentMetadata.endDate ? new Date(currentMetadata.endDate) : null;
+
+                    // Build filename: groupname-wrapped-year
+                    if (groupName) {
+                        filename = `${groupName}-wrapped`;
+                    } else {
+                        filename = 'whatsapp-wrapped';
+                    }
+
+                    if (startDate && endDate) {
+                        const startYear = startDate.getFullYear();
+                        const endYear = endDate.getFullYear();
+                        filename += startYear === endYear ? `-${startYear}` : `-${startYear}-${endYear}`;
+                    }
+                }
+
+                a.download = `${filename}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                downloadImagesBtn.textContent = '🖼️ Download Images';
+                downloadImagesBtn.style.pointerEvents = 'auto';
+            } catch (error) {
+                console.error('Error downloading images:', error);
+                alert('Failed to download images. Please try again.');
+                downloadImagesBtn.textContent = '🖼️ Download Images';
+                downloadImagesBtn.style.pointerEvents = 'auto';
+            }
+        });
 
         // File input change handler
         fileInput.addEventListener('change', function() {
@@ -594,6 +701,8 @@ $domain = 'whatsappwrapped.demolab.com';
             const gallery = document.getElementById('gallery');
             const resultsContent = document.getElementById('resultsContent');
             gallery.innerHTML = '';
+            currentSvgDataUris = [];
+            currentMetadata = jsonData.metadata || null;
 
             try {
                 console.log('Starting gallery generation from JSON...');
@@ -620,6 +729,8 @@ $domain = 'whatsappwrapped.demolab.com';
                     try {
                         console.log(`Generating card ${index + 1}:`, section.title);
                         const svgDataUri = generateSVG(section, index, isRTL, jsonData.metadata);
+                        currentSvgDataUris.push(svgDataUri);
+
                         const card = document.createElement('div');
                         card.className = 'stat-card';
                         const img = document.createElement('img');
@@ -666,8 +777,7 @@ $domain = 'whatsappwrapped.demolab.com';
             const maxItems = Math.min(section.items.length, 5);
 
             // Each card gets a unique bright color - rotate through all colors
-            const colorSchemes = [
-                {
+            const colorSchemes = [{
                     bg: '#FF6B9D',
                     text: '#1a1a1a'
                 }, // Bright pink
@@ -804,13 +914,13 @@ $domain = 'whatsappwrapped.demolab.com';
 
             // Footer decoration
             svg += `<rect x="0" y="${height - 80}" width="${width}" height="80" fill="rgba(0,0,0,0.1)"/>`;
-            
+
             // WhatsApp Wrapped title with year/dates
             let wrappedTitle = 'WhatsApp Wrapped';
             if (metadata) {
                 const startDate = metadata.startDate ? new Date(metadata.startDate) : null;
                 const endDate = metadata.endDate ? new Date(metadata.endDate) : null;
-                
+
                 if (startDate && endDate) {
                     // if it's 1/1 to 12/31 of the same year, show just the year, otherwise show dates
                     if (startDate.getFullYear() === endDate.getFullYear() &&
@@ -818,14 +928,18 @@ $domain = 'whatsappwrapped.demolab.com';
                         endDate.getMonth() === 11 && endDate.getDate() === 31) {
                         wrappedTitle += ` ${startDate.getFullYear()}`;
                     } else {
-                        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                        const options = {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        };
                         const startStr = startDate.toLocaleDateString(undefined, options);
                         const endStr = endDate.toLocaleDateString(undefined, options);
                         wrappedTitle += ` ${startStr} - ${endStr}`;
                     }
                 }
             }
-            
+
             svg += `<text x="${width / 2}" y="${height - 45}" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed">${escapeXml(wrappedTitle)}</text>`;
             svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" opacity="0.8"><?= $domain ?></text>`;
 
