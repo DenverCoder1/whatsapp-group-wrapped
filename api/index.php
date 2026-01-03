@@ -801,14 +801,31 @@
         // Copy image to clipboard
         async function copyImageToClipboard(dataUri) {
             try {
-                // Convert data URI to blob
-                const response = await fetch(dataUri);
-                const blob = await response.blob();
+                // Create an image element from the SVG data URI
+                const img = new Image();
+                img.src = dataUri;
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                });
+
+                // Create a canvas and draw the image
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Convert canvas to blob
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/png');
+                });
                 
                 // Copy to clipboard
                 await navigator.clipboard.write([
                     new ClipboardItem({
-                        [blob.type]: blob
+                        'image/png': blob
                     })
                 ]);
 
