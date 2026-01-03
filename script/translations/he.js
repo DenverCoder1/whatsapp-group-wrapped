@@ -139,6 +139,7 @@ module.exports = {
 
     // Messages
     messages: {
-        totalMessagesWithMedia: 'סה"כ הודעות עם מדיה'
+        totalMessagesWithMedia: 'סה"כ הודעות עם מדיה',
+        alsoKnownAs: 'שמות אחרים'
     }
 };

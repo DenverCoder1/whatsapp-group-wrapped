@@ -427,7 +427,7 @@ if (vcfAnalysis.size > 0) {
                 .sort((a, b) => b[1] - a[1])
                 .map(([name, count]) => `${name} (${count})`)
                 .join(", ");
-            outputLine(`   Also known as: ${nameList}`);
+            outputLine(`   ${i18n.t('messages.alsoKnownAs')}: ${nameList}`);
         }
     }
     outputLine();
