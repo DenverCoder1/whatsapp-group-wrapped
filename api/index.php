@@ -205,6 +205,10 @@
             margin-bottom: 30px;
         }
 
+        .gallery.rtl {
+            direction: rtl;
+        }
+
         .stat-card {
             background: white;
             border-radius: 15px;
@@ -307,6 +311,11 @@
             font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.6;
+        }
+
+        .results-content.rtl {
+            direction: rtl;
+            text-align: right;
         }
 
         .text-results {
@@ -523,11 +532,13 @@
 
                 if (data.success) {
                     resultsContent.textContent = data.output;
-                    // Use JSON data if available, otherwise fall back to text parsing
+                    // Generate gallery from JSON data
                     if (data.json && data.json.sections) {
                         generateGalleryFromJson(data.json);
                     } else {
-                        generateGallery(data.output);
+                        console.error('No JSON data available');
+                        error.textContent = '❌ Error: No structured data available';
+                        error.classList.add('active');
                     }
                     results.classList.add('active');
                     downloadBtn.href = 'api.php?download=' + encodeURIComponent(data.filename);
@@ -547,6 +558,7 @@
         // Parse results and generate gallery from JSON
         function generateGalleryFromJson(jsonData) {
             const gallery = document.getElementById('gallery');
+            const resultsContent = document.getElementById('resultsContent');
             gallery.innerHTML = '';
 
             try {
@@ -555,6 +567,15 @@
                 const isRTL = jsonData.metadata?.language?.rtl || false;
                 console.log('JSON sections:', sections.length, sections);
                 console.log('Language RTL:', isRTL);
+                
+                // Set RTL classes
+                if (isRTL) {
+                    gallery.classList.add('rtl');
+                    resultsContent.classList.add('rtl');
+                } else {
+                    gallery.classList.remove('rtl');
+                    resultsContent.classList.remove('rtl');
+                }
                 
                 if (sections.length === 0) {
                     gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No sections found to display</p>';
@@ -589,151 +610,11 @@
             }
         }
 
-        // Parse results and generate gallery
-        function generateGallery(text) {
-            const gallery = document.getElementById('gallery');
-            gallery.innerHTML = '';
-
-            try {
-                console.log('Starting gallery generation from text...');
-                const sections = parseResults(text);
-                // Detect RTL from text content
-                const isRTL = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
-                console.log('Parsed sections:', sections.length, sections);
-                console.log('Detected RTL:', isRTL);
-                
-                if (sections.length === 0) {
-                    gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No sections found to display</p>';
-                    return;
-                }
-                
-                sections.forEach((section, index) => {
-                    try {
-                        console.log(`Generating card ${index + 1}:`, section.title);
-                        const svgDataUri = generateSVG(section, index, isRTL);
-                        const card = document.createElement('div');
-                        card.className = 'stat-card';
-                        const img = document.createElement('img');
-                        img.src = svgDataUri;
-                        img.alt = escapeHtml(section.title);
-                        img.onerror = function() {
-                            console.error('Failed to load image for section:', section.title);
-                        };
-                        img.onload = function() {
-                            console.log('Image loaded successfully:', section.title);
-                        };
-                        card.appendChild(img);
-                        card.addEventListener('click', () => copyImageToClipboard(svgDataUri));
-                        gallery.appendChild(card);
-                    } catch (sectionErr) {
-                        console.error('Error generating card:', sectionErr, section);
-                    }
-                });
-            } catch (err) {
-                console.error('Error generating gallery:', err);
-                gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Could not generate image gallery</p>';
-            }
-        }
-
         // Helper to escape HTML
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }
-
-        // Parse text results into structured sections
-        function parseResults(text) {
-            const sections = [];
-            const lines = text.split('\n');
-            
-            let currentSection = null;
-            let groupName = '';
-            let dateRange = '';
-
-            // Map section titles to icons
-            const iconMap = {
-                'top senders': '📊',
-                'top media senders': '📷',
-                'top question askers': '❓',
-                'top taggers': '🏷️',
-                'top taggees': '👤',
-                'most active days': '📅',
-                'most active hours': '⏰',
-                'word cloud': '☁️',
-                'emoji usage': '😀',
-                'message statistics': '📈',
-                'average messages': '📊',
-                'total messages': '💬'
-            };
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                
-                // Extract group name from header
-                if (line.includes('WhatsApp Group Wrapped')) {
-                    const match = line.match(/║\s*(.+?)\s*║/);
-                    if (match) {
-                        groupName = match[1].replace('WhatsApp Group Wrapped', '').trim();
-                    }
-                }
-
-                // Detect section headers (lines ending with colon)
-                if (line.endsWith(':') && line.length > 3 && line.length < 50 && !line.includes('http')) {
-                    if (currentSection && currentSection.items.length > 0) {
-                        sections.push(currentSection);
-                    }
-                    
-                    const sectionTitle = line.slice(0, -1); // Remove the colon
-                    const lowerTitle = sectionTitle.toLowerCase();
-                    let icon = '📊'; // Default icon
-                    
-                    // Find matching icon
-                    for (const [key, value] of Object.entries(iconMap)) {
-                        if (lowerTitle.includes(key)) {
-                            icon = value;
-                            break;
-                        }
-                    }
-                    
-                    currentSection = {
-                        title: sectionTitle,
-                        icon: icon,
-                        items: [],
-                        groupName,
-                        dateRange
-                    };
-                } else if (currentSection && line.match(/^[\w\s\+\-\(\)@⁨⁩]+\s+-\s+\d+/)) {
-                    // Parse list items (Name - count)
-                    const match = line.match(/^(.+?)\s+-\s+(.+)$/);
-                    if (match) {
-                        currentSection.items.push({
-                            name: match[1].trim(),
-                            value: match[2].trim()
-                        });
-                    }
-                } else if (currentSection && line.includes(':') && !line.endsWith(':') && !line.startsWith('http')) {
-                    // Parse key-value pairs - only split on first colon
-                    const colonIndex = line.indexOf(':');
-                    if (colonIndex > 0) {
-                        const name = line.substring(0, colonIndex).trim();
-                        const value = line.substring(colonIndex + 1).trim();
-                        if (name && value && value.length > 0) {
-                            currentSection.items.push({
-                                name: name,
-                                value: value
-                            });
-                        }
-                    }
-                }
-            }
-
-            if (currentSection && currentSection.items.length > 0) {
-                sections.push(currentSection);
-            }
-
-            console.log('Final parsed sections:', sections);
-            return sections.filter(s => s.items.length > 0).slice(0, 8); // Limit to top sections
         }
 
         // Generate SVG for a section
