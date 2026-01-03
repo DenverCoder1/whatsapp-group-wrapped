@@ -73,7 +73,7 @@ if ($_FILES['chatFile']['error'] !== UPLOAD_ERR_OK) {
 // Get form parameters
 $startDate = $_POST['startDate'] ?? '2025-01-01';
 $endDate = $_POST['endDate'] ?? '2025-12-31';
-$topCount = intval($_POST['topCount'] ?? 20);
+$topCount = intval($_POST['topCount'] ?? 25);
 $language = $_POST['language'] ?? 'en';
 
 // Validate parameters

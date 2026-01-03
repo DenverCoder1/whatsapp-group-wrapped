@@ -220,26 +220,32 @@ addJsonSection(i18n.t('sections.topQuestionAskers'), top.map(([name, count]) => 
 
 // Top taggers
 top = getTopEntries(tagsPerSender, TOP_COUNT);
-outputLine(`${i18n.t('sections.topTaggers')}:`);
-for (const [sender, count] of top) {
-    const unit = i18n.pluralize(count, i18n.t('units.tag'));
-    const verb = i18n.conjugateVerb(count, i18n.t('actions.sent'));
-    outputLine(`${sender} - ${count} ${unit} ${verb}`);
+const totalTags = top.reduce((sum, [_, count]) => sum + count, 0);
+if (totalTags > 0) {
+    outputLine(`${i18n.t('sections.topTaggers')}:`);
+    for (const [sender, count] of top) {
+        const unit = i18n.pluralize(count, i18n.t('units.tag'));
+        const verb = i18n.conjugateVerb(count, i18n.t('actions.sent'));
+        outputLine(`${sender} - ${count} ${unit} ${verb}`);
+    }
+    outputLine();
+    addJsonSection(i18n.t('sections.topTaggers'), top.map(([name, count]) => ({ name, value: `${count} ${i18n.pluralize(count, i18n.t('units.tag'))} ${i18n.conjugateVerb(count, i18n.t('actions.sent'))}` })), '🏷️', true);
 }
-outputLine();
-addJsonSection(i18n.t('sections.topTaggers'), top.map(([name, count]) => ({ name, value: `${count} ${i18n.pluralize(count, i18n.t('units.tag'))} ${i18n.conjugateVerb(count, i18n.t('actions.sent'))}` })), '🏷️', true);
 
 // Top taggees
 const taggees = calculateTaggees(messages);
 top = getTopEntries(taggees, TOP_COUNT);
-outputLine(`${i18n.t('sections.topTaggees')}:`);
-for (const [tag, count] of top) {
-    const unit = i18n.pluralize(count, i18n.t('units.time'));
-    const verb = i18n.conjugateVerb(count, i18n.t('actions.tagged'));
-    outputLine(`${TAG_TO_NAME[tag] || tag} - ${verb} ${count} ${unit}`);
+const totalTaggees = top.reduce((sum, [_, count]) => sum + count, 0);
+if (totalTaggees > 0) {
+    outputLine(`${i18n.t('sections.topTaggees')}:`);
+    for (const [tag, count] of top) {
+        const unit = i18n.pluralize(count, i18n.t('units.time'));
+        const verb = i18n.conjugateVerb(count, i18n.t('actions.tagged'));
+        outputLine(`${TAG_TO_NAME[tag] || tag} - ${verb} ${count} ${unit}`);
+    }
+    outputLine();
+    addJsonSection(i18n.t('sections.topTaggees'), top.map(([tag, count]) => ({ name: TAG_TO_NAME[tag] || tag, value: `${i18n.conjugateVerb(count, i18n.t('actions.tagged'))} ${count} ${i18n.pluralize(count, i18n.t('units.time'))}` })), '👤', true);
 }
-outputLine();
-addJsonSection(i18n.t('sections.topTaggees'), top.map(([tag, count]) => ({ name: TAG_TO_NAME[tag] || tag, value: `${i18n.conjugateVerb(count, i18n.t('actions.tagged'))} ${count} ${i18n.pluralize(count, i18n.t('units.time'))}` })), '👤', true);
 
 // Total messages
 outputLine(`${i18n.t('stats.totalMessages')}:`, messages.length, "\n");
@@ -258,7 +264,9 @@ outputLine(`${i18n.t('stats.dailyAverage')}:`, dailyMessages, "\n");
 
 // Message senders
 const senderCount = countUniqueSenders(messages);
-outputLine(`${i18n.t('stats.messageSenders')}:`, senderCount, "\n");
+if (senderCount > 2) {
+    outputLine(`${i18n.t('stats.messageSenders')}:`, senderCount, "\n");
+}
 
 // Add Message Stats section
 const messageStats = [
@@ -272,15 +280,18 @@ if (pinnedMessages > 0) {
 }
 addJsonSection(i18n.t('sections.messageStats'), messageStats, '📊');
 
-// Add Member Stats section
-const memberStats = [
-    { name: i18n.t('stats.messageSenders'), value: senderCount.toString() },
-    { name: i18n.t('stats.membersJoined'), value: addedMembers.size.toString() }
-];
-if (leftMembers.size > 0) {
-    memberStats.push({ name: i18n.t('stats.membersLeft'), value: leftMembers.size.toString() });
+// Add Member Stats section (hide if it's a private chat)
+const isPrivateChat = senderCount === 2 && addedMembers.size === 0 && leftMembers.size === 0;
+if (!isPrivateChat) {
+    const memberStats = [
+        { name: i18n.t('stats.messageSenders'), value: senderCount.toString() },
+        { name: i18n.t('stats.membersJoined'), value: addedMembers.size.toString() }
+    ];
+    if (leftMembers.size > 0) {
+        memberStats.push({ name: i18n.t('stats.membersLeft'), value: leftMembers.size.toString() });
+    }
+    addJsonSection(i18n.t('sections.memberStats'), memberStats, '👥');
 }
-addJsonSection(i18n.t('sections.memberStats'), memberStats, '👥');
 
 // Most active hour of the day
 const messagesPerHour = calculateMessagesPerHour(messages);
@@ -320,8 +331,10 @@ for (const [month, count] of top) {
 outputLine();
 addJsonSection(i18n.t('sections.mostActiveMonths'), top.map(([month, count]) => ({ name: i18n.getMonthName(Number(month)), value: `${count} ${i18n.pluralize(count, i18n.t('units.message'))}` })), '📆');
 
-// Members who joined
-outputLine(`${i18n.t('stats.membersJoined')}:`, addedMembers.size, "\n");
+if (addedMembers.size > 0) {
+    // Members who joined
+    outputLine(`${i18n.t('stats.membersJoined')}:`, addedMembers.size, "\n");
+}
 
 // Members who left
 if (leftMembers.size > 0) {
