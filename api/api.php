@@ -73,11 +73,18 @@ if ($_FILES['chatFile']['error'] !== UPLOAD_ERR_OK) {
 // Get form parameters
 $startDate = $_POST['startDate'] ?? '2025-01-01';
 $endDate = $_POST['endDate'] ?? '2025-12-31';
-$topCount = intval($_POST['topCount'] ?? 25);
+$topCount = intval($_POST['topCount'] ?? 5);
+$language = $_POST['language'] ?? 'en';
 
 // Validate parameters
 if ($topCount < 1 || $topCount > 100) {
     echo json_encode(['success' => false, 'error' => 'Top count must be between 1 and 100']);
+    exit;
+}
+
+// Validate language (only allow alphanumeric codes)
+if (!preg_match('/^[a-z]{2}$/', $language)) {
+    echo json_encode(['success' => false, 'error' => 'Invalid language code']);
     exit;
 }
 
@@ -140,12 +147,12 @@ $scriptPath = dirname(__DIR__) . '/script/main.js';
 
 // Run with JSON output format
 $command = sprintf(
-    'node %s %s %s %s %s json > %s 2>&1',
+    'node %s %s %s %s %s json %s > %s 2>&1',
     escapeshellarg($scriptPath),
     escapeshellarg($uploadedFilePath),
     escapeshellarg($startDate),
     escapeshellarg($endDate),
-    escapeshellarg((string)$topCount),
+    escapeshellarg($language),
     escapeshellarg($jsonOutputPath)
 );
 
@@ -153,12 +160,12 @@ exec($command, $output, $returnCode);
 
 // Also generate text output for download
 $textCommand = sprintf(
-    'node %s %s %s %s %s text > %s 2>&1',
+    'node %s %s %s %s %s text %s > %s 2>&1',
     escapeshellarg($scriptPath),
     escapeshellarg($uploadedFilePath),
     escapeshellarg($startDate),
     escapeshellarg($endDate),
-    escapeshellarg((string)$topCount),
+    escapeshellarg($language),
     escapeshellarg($outputFilePath)
 );
 

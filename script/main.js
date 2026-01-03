@@ -1,16 +1,11 @@
 /**
  * Set config values in config.js
- * Run script with: `node main.js <file> [startDate] [endDate] [topCount]`
+ * Run script with: `node main.js <file> [startDate] [endDate] [topCount] [outputFormat] [language]`
  */
 
 let { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
 const { extractFirstFileByExtension, extractFilesByExtension } = require("./zip-extractor.js");
-
-// Helper function for pluralization
-function pluralize(count, singular, plural = null) {
-    if (count === 1) return singular;
-    return plural || singular + 's';
-}
+const Translations = require("./translations.js");
 
 const {
     detectChatFormat,
@@ -27,8 +22,6 @@ const {
     calculateMessagesPerHour,
     calculateMessagesPerDayOfWeek,
     calculateMessagesPerMonth,
-    getDayName,
-    getMonthName,
     analyzeVcfFiles,
     generateCsv,
 } = require("./util.js");
@@ -44,13 +37,15 @@ if (process.argv.length < 3) {
 // read the chat file
 const IMPORT_FILE = process.argv[2];
 
-// Optional arguments to override config: startDate, endDate, topCount, outputFormat
+// Optional arguments to override config: startDate, endDate, topCount, outputFormat, language
 let OUTPUT_FORMAT = 'text'; // default to text
+let LANGUAGE = 'en'; // default to English
 if (process.argv[3]) {
     const startDate = process.argv[3];
     const endDate = process.argv[4] || FILTERS.endDate.toISOString().split('T')[0];
     const topCount = process.argv[5] ? Number.parseInt(process.argv[5], 10) : TOP_COUNT;
     const outputFormat = process.argv[6] || 'text';
+    const language = process.argv[7] || 'en';
     
     FILTERS = {
         startDate: new Date(startDate + 'T00:00:00'),
@@ -58,7 +53,11 @@ if (process.argv[3]) {
     };
     TOP_COUNT = topCount;
     OUTPUT_FORMAT = outputFormat;
+    LANGUAGE = language;
 }
+
+// Initialize translations
+const i18n = new Translations(LANGUAGE);
 
 // create an output directory to store the results
 const outputDir = process.env.VERCEL ? '/tmp/output' : path.join(__dirname, "..", "output");
@@ -71,7 +70,12 @@ const jsonOutput = {
     metadata: {
         groupName: '',
         startDate: FILTERS.startDate.toISOString().split('T')[0],
-        endDate: FILTERS.endDate.toISOString().split('T')[0]
+        endDate: FILTERS.endDate.toISOString().split('T')[0],
+        language: {
+            code: i18n.getLanguageCode(),
+            name: i18n.getLanguageName(),
+            rtl: i18n.isRTL()
+        }
     },
     sections: []
 };
@@ -124,12 +128,14 @@ function outputLine(...args) {
  * @param {string} title - Section title
  * @param {Array} items - Array of {name, value} objects or strings
  * @param {string} icon - Optional icon for the section
+ * @param {boolean} isRanked - Whether this section shows ranked items with numbers
  */
-function addJsonSection(title, items, icon = '📊') {
+function addJsonSection(title, items, icon = '📊', isRanked = false) {
     if (OUTPUT_FORMAT === 'json') {
         jsonOutput.sections.push({
             title,
             icon,
+            isRanked,
             items: items.map(item => {
                 if (typeof item === 'object' && item.name && item.value) {
                     return item;
@@ -183,90 +189,98 @@ messages.forEach((message) => {
     messagesPerSender[message.sender]++;
 });
 let top = getTopEntries(messagesPerSender, TOP_COUNT);
-outputLine(`Top senders:`);
+outputLine(`${i18n.t('sections.topSenders')}:`);
 for (const [sender, count] of top) {
-    outputLine(`${sender} - ${count} ${pluralize(count, 'message')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.message'));
+    outputLine(`${sender} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Top senders', top.map(([name, count]) => ({ name, value: `${count} ${pluralize(count, 'message')}` })), '📊');
+addJsonSection(i18n.t('sections.topSenders'), top.map(([name, count]) => ({ name, value: `${count} ${i18n.pluralize(count, i18n.t('units.message'))}` })), '📊', true);
 
 // Top media senders
 top = getTopEntries(mediaPerSender, TOP_COUNT);
-outputLine(`Top media senders:`);
+outputLine(`${i18n.t('sections.topMediaSenders')}:`);
 for (const [sender, count] of top) {
-    outputLine(`${sender} - ${count} ${pluralize(count, 'message')} with media`);
+    const unit = i18n.pluralize(count, i18n.t('units.messageWithMedia'));
+    outputLine(`${sender} - ${count} ${unit}`);
 }
-outputLine("\nTotal messages with media:", totalMedia, "\n");
-addJsonSection('Top media senders', top.map(([name, count]) => ({ name, value: `${count} ${pluralize(count, 'message')} with media` })), '📷');
+outputLine(`\n${i18n.t('messages.totalMessagesWithMedia')}:`, totalMedia, "\n");
+addJsonSection(i18n.t('sections.topMediaSenders'), top.map(([name, count]) => ({ name, value: `${count} ${i18n.pluralize(count, i18n.t('units.messageWithMedia'))}` })), '📷', true);
 
 // Top question askers
 top = getTopEntries(questionsPerSender, TOP_COUNT).filter((a) => a[1] > 0);
-outputLine(`Top question askers:`);
+outputLine(`${i18n.t('sections.topQuestionAskers')}:`);
 for (const [sender, count] of top) {
-    outputLine(`${sender} - ${count} ${pluralize(count, 'question')} asked`);
+    const unit = i18n.pluralize(count, i18n.t('units.question'));
+    const verb = i18n.conjugateVerb(count, i18n.t('actions.asked'));
+    outputLine(`${sender} - ${count} ${unit} ${verb}`);
 }
 outputLine();
-addJsonSection('Top question askers', top.map(([name, count]) => ({ name, value: `${count} ${pluralize(count, 'question')} asked` })), '❓');
+addJsonSection(i18n.t('sections.topQuestionAskers'), top.map(([name, count]) => ({ name, value: `${count} ${i18n.pluralize(count, i18n.t('units.question'))} ${i18n.conjugateVerb(count, i18n.t('actions.asked'))}` })), '❓', true);
 
 // Top taggers
 top = getTopEntries(tagsPerSender, TOP_COUNT);
-outputLine(`Top taggers:`);
+outputLine(`${i18n.t('sections.topTaggers')}:`);
 for (const [sender, count] of top) {
-    outputLine(`${sender} - ${count} ${pluralize(count, 'tag')} sent`);
+    const unit = i18n.pluralize(count, i18n.t('units.tag'));
+    const verb = i18n.conjugateVerb(count, i18n.t('actions.sent'));
+    outputLine(`${sender} - ${count} ${unit} ${verb}`);
 }
 outputLine();
-addJsonSection('Top taggers', top.map(([name, count]) => ({ name, value: `${count} ${pluralize(count, 'tag')} sent` })), '🏷️');
+addJsonSection(i18n.t('sections.topTaggers'), top.map(([name, count]) => ({ name, value: `${count} ${i18n.pluralize(count, i18n.t('units.tag'))} ${i18n.conjugateVerb(count, i18n.t('actions.sent'))}` })), '🏷️', true);
 
 // Top taggees
 const taggees = calculateTaggees(messages);
 top = getTopEntries(taggees, TOP_COUNT);
-outputLine(`Top taggees:`);
+outputLine(`${i18n.t('sections.topTaggees')}:`);
 for (const [tag, count] of top) {
-    outputLine(`${TAG_TO_NAME[tag] || tag} - tagged ${count} ${pluralize(count, 'time')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.time'));
+    const verb = i18n.conjugateVerb(count, i18n.t('actions.tagged'));
+    outputLine(`${TAG_TO_NAME[tag] || tag} - ${verb} ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Top taggees', top.map(([tag, count]) => ({ name: TAG_TO_NAME[tag] || tag, value: `tagged ${count} ${pluralize(count, 'time')}` })), '👤');
+addJsonSection(i18n.t('sections.topTaggees'), top.map(([tag, count]) => ({ name: TAG_TO_NAME[tag] || tag, value: `${i18n.conjugateVerb(count, i18n.t('actions.tagged'))} ${count} ${i18n.pluralize(count, i18n.t('units.time'))}` })), '👤', true);
 
 // Total messages
-outputLine("Total messages:", messages.length, "\n");
+outputLine(`${i18n.t('stats.totalMessages')}:`, messages.length, "\n");
 
 // Deleted messages
 const deletedCount = messages.filter((m) => m.deleted).length;
-outputLine("Total messages deleted:", deletedCount, "\n");
+outputLine(`${i18n.t('stats.messagesDeleted')}:`, deletedCount, "\n");
 
 // Messages deleted by admin
 const deletedByAdminCount = messages.filter((m) => m.text === "null").length;
-outputLine("Total messages deleted by admin:", deletedByAdminCount, "\n");
+outputLine(`${i18n.t('stats.messagesDeletedByAdmin')}:`, deletedByAdminCount, "\n");
 
 // Daily messages (average)
 const dailyMessages = calculateDailyAverage(messages.length, FILTERS.startDate, FILTERS.endDate);
-outputLine("Daily messages:", dailyMessages, "\n");
+outputLine(`${i18n.t('stats.dailyAverage')}:`, dailyMessages, "\n");
 
 // Message senders
 const senderCount = countUniqueSenders(messages);
-outputLine("Message senders:", senderCount, "\n");
+outputLine(`${i18n.t('stats.messageSenders')}:`, senderCount, "\n");
 
 // Add Message Stats section
 const messageStats = [
-    { name: 'Total messages', value: messages.length.toString() },
-    { name: 'Messages with media', value: totalMedia.toString() },
-    { name: 'Messages deleted', value: deletedCount.toString() },
-    { name: 'Daily average', value: dailyMessages.toString() }
+    { name: i18n.t('stats.totalMessages'), value: messages.length.toString() },
+    { name: i18n.t('stats.messagesWithMedia'), value: totalMedia.toString() },
+    { name: i18n.t('stats.messagesDeleted'), value: deletedCount.toString() },
+    { name: i18n.t('stats.dailyAverage'), value: dailyMessages.toString() }
 ];
 if (pinnedMessages > 0) {
-    messageStats.push({ name: 'Messages pinned', value: pinnedMessages.toString() });
+    messageStats.push({ name: i18n.t('stats.messagesPinned'), value: pinnedMessages.toString() });
 }
-addJsonSection('Message Stats', messageStats, '📊');
+addJsonSection(i18n.t('sections.messageStats'), messageStats, '📊');
 
 // Add Member Stats section
 const memberStats = [
-    { name: 'Message senders', value: senderCount.toString() },
-    { name: 'Members joined', value: addedMembers.size.toString() }
+    { name: i18n.t('stats.messageSenders'), value: senderCount.toString() },
+    { name: i18n.t('stats.membersJoined'), value: addedMembers.size.toString() }
 ];
 if (leftMembers.size > 0) {
-    memberStats.push({ name: 'Members left', value: leftMembers.size.toString() });
+    memberStats.push({ name: i18n.t('stats.membersLeft'), value: leftMembers.size.toString() });
 }
-addJsonSection('Member Stats', memberStats, '👥');
+addJsonSection(i18n.t('sections.memberStats'), memberStats, '👥');
 
 // Most active hour of the day
 const messagesPerHour = calculateMessagesPerHour(messages);
@@ -274,104 +288,111 @@ const messagesPerHour = calculateMessagesPerHour(messages);
 top = Object.entries(messagesPerHour)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-outputLine(`Top active hours of the day:`);
+outputLine(`${i18n.t('sections.mostActiveHours')}:`);
 for (const [hour, count] of top) {
-    outputLine(`${hour}:00 - ${count} ${pluralize(count, 'message')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.message'));
+    outputLine(`${i18n.format(i18n.t('formats.hourFormat'), {hour})} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Most Active Hours', top.map(([hour, count]) => ({ name: `${hour}:00`, value: `${count} ${pluralize(count, 'message')}` })), '⏰');
+addJsonSection(i18n.t('sections.mostActiveHours'), top.map(([hour, count]) => ({ name: i18n.format(i18n.t('formats.hourFormat'), {hour}), value: `${count} ${i18n.pluralize(count, i18n.t('units.message'))}` })), '⏰');
 
 // Most active day of the week
 const messagesPerDay = calculateMessagesPerDayOfWeek(messages);
 // show top
 top = Object.entries(messagesPerDay).sort((a, b) => b[1] - a[1]);
-outputLine(`Top active days of the week:`);
+outputLine(`${i18n.t('sections.mostActiveDays')}:`);
 for (const [day, count] of top) {
-    outputLine(`${getDayName(Number(day))} - ${count} ${pluralize(count, 'message')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.message'));
+    outputLine(`${i18n.getDayName(Number(day))} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Most Active Days', top.map(([day, count]) => ({ name: getDayName(Number(day)), value: `${count} ${pluralize(count, 'message')}` })), '📅');
+addJsonSection(i18n.t('sections.mostActiveDays'), top.map(([day, count]) => ({ name: i18n.getDayName(Number(day)), value: `${count} ${i18n.pluralize(count, i18n.t('units.message'))}` })), '📅');
 
 // Most active month of the year
 const messagesPerMonth = calculateMessagesPerMonth(messages);
 // show top
 top = Object.entries(messagesPerMonth).sort((a, b) => b[1] - a[1]);
-outputLine(`Top active months of the year:`);
+outputLine(`${i18n.t('sections.mostActiveMonths')}:`);
 for (const [month, count] of top) {
-    outputLine(`${getMonthName(Number(month))} - ${count} ${pluralize(count, 'message')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.message'));
+    outputLine(`${i18n.getMonthName(Number(month))} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Most Active Months', top.map(([month, count]) => ({ name: getMonthName(Number(month)), value: `${count} ${pluralize(count, 'message')}` })), '📆');
+addJsonSection(i18n.t('sections.mostActiveMonths'), top.map(([month, count]) => ({ name: i18n.getMonthName(Number(month)), value: `${count} ${i18n.pluralize(count, i18n.t('units.message'))}` })), '📆');
 
 // Members who joined
-outputLine("Members who joined:", addedMembers.size, "\n");
+outputLine(`${i18n.t('stats.membersJoined')}:`, addedMembers.size, "\n");
 
 // Members who left
 if (leftMembers.size > 0) {
-    outputLine("Members who left:", leftMembers.size, "\n");
+    outputLine(`${i18n.t('stats.membersLeft')}:`, leftMembers.size, "\n");
 }
 
 // Pinned messages
 if (pinnedMessages > 0) {
-    outputLine("Messages pinned:", pinnedMessages, "\n");
+    outputLine(`${i18n.t('stats.messagesPinned')}:`, pinnedMessages, "\n");
 }
 
 // Total number of words sent, average number of words per message, most common words
 const { totalWords, messagesWithWords, words, uncommonWords } = calculateWordStats(messages, commonWords);
 const avgWordsPerMessage = Math.round((totalWords / messagesWithWords) * 100) / 100;
-outputLine("Total number of words sent:", totalWords, "\n");
-outputLine("Average number of words per message:", avgWordsPerMessage, "\n");
+outputLine(`${i18n.t('stats.totalWordsent')}:`, totalWords, "\n");
+outputLine(`${i18n.t('stats.wordsPerMessage')}:`, avgWordsPerMessage, "\n");
 
 // show top common words
 top = Object.entries(words)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-outputLine(`Top words:`);
+outputLine(`${i18n.t('sections.topWords')}:`);
 for (const [word, count] of top) {
-    outputLine(`${word} - ${count} ${pluralize(count, 'time')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.time'));
+    outputLine(`${word} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Top Words', top.map(([word, count]) => ({ name: word, value: `${count} ${pluralize(count, 'time')}` })), '💬');
+addJsonSection(i18n.t('sections.topWords'), top.map(([word, count]) => ({ name: word, value: `${count} ${i18n.pluralize(count, i18n.t('units.time'))}` })), '💬');
 
 // show top uncommon words
 const topUncommon = Object.entries(uncommonWords)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_COUNT);
-outputLine(`Top uncommon words:`);
+outputLine(`${i18n.t('sections.topUncommonWords')}:`);
 for (const [word, count] of topUncommon) {
-    outputLine(`${word} - ${count} ${pluralize(count, 'time')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.time'));
+    outputLine(`${word} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Top Uncommon Words', topUncommon.map(([word, count]) => ({ name: word, value: `${count} ${pluralize(count, 'time')}` })), '✨');
+addJsonSection(i18n.t('sections.topUncommonWords'), topUncommon.map(([word, count]) => ({ name: word, value: `${count} ${i18n.pluralize(count, i18n.t('units.time'))}` })), '✨');
 
 // Add Word Stats section
 const wordStats = [
-    { name: 'Total words sent', value: totalWords.toString() },
-    { name: 'Words per message', value: avgWordsPerMessage.toString() }
+    { name: i18n.t('stats.totalWordsent'), value: totalWords.toString() },
+    { name: i18n.t('stats.wordsPerMessage'), value: avgWordsPerMessage.toString() }
 ];
-addJsonSection('Word Stats', wordStats, '📝');
+addJsonSection(i18n.t('sections.wordStats'), wordStats, '📝');
 
 // Top emoji senders, Most common emojis
 top = Object.entries(emojiPerSender)
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, TOP_COUNT);
-outputLine(`Top emoji senders:`);
+outputLine(`${i18n.t('sections.topEmojiSenders')}:`);
 for (const [sender, emojiString] of top) {
-    outputLine(`${sender} - ${emojiString.length} ${pluralize(emojiString.length, 'emoji')}`);
+    const unit = i18n.pluralize(emojiString.length, i18n.t('units.emoji'));
+    outputLine(`${sender} - ${emojiString.length} ${unit}`);
 }
 outputLine();
-addJsonSection('Top Emoji Senders', top.map(([name, emojiString]) => ({ name, value: `${emojiString.length} ${pluralize(emojiString.length, 'emoji')}` })), '😀');
+addJsonSection(i18n.t('sections.topEmojiSenders'), top.map(([name, emojiString]) => ({ name, value: `${emojiString.length} ${i18n.pluralize(emojiString.length, i18n.t('units.emoji'))}` })), '😀', true);
 
 top = getTopEntries(emojis, TOP_COUNT);
-outputLine(`Top emojis:`);
+outputLine(`${i18n.t('sections.topEmojis')}:`);
 for (const [emoji, count] of top) {
-    outputLine(`${emoji} - ${count} ${pluralize(count, 'time')}`);
+    const unit = i18n.pluralize(count, i18n.t('units.time'));
+    outputLine(`${emoji} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection('Top Emojis', top.map(([emoji, count]) => ({ name: emoji, value: `${count} ${pluralize(count, 'time')}` })), '🎉');
+addJsonSection(i18n.t('sections.topEmojis'), top.map(([emoji, count]) => ({ name: emoji, value: `${count} ${i18n.pluralize(count, i18n.t('units.time'))}` })), '🎉', true);
 
 // Number of unique emojis
-outputLine("Number of unique emojis:", Object.keys(emojis).length, "\n");
+outputLine(`${i18n.t('stats.numberOfUniqueEmojis')}:`, Object.keys(emojis).length, "\n");
 
 // Analyze VCF files if this is a ZIP file
 let vcfAnalysis = new Map();
@@ -388,15 +409,17 @@ if (vcfAnalysis.size > 0) {
     // Sort by count (most shared first)
     const sortedPhones = Array.from(vcfAnalysis.entries()).sort((a, b) => b[1].count - a[1].count);
 
-    outputLine(`Total unique phone numbers sent as contacts: ${sortedPhones.length}`);
+    outputLine(`${i18n.t('stats.uniquePhoneNumbers')}: ${sortedPhones.length}`);
     outputLine();
 
     // Show most shared contacts
     const topShared = sortedPhones.slice(0, Math.min(TOP_COUNT, sortedPhones.length));
-    outputLine(`Top ${topShared.length} most shared contacts:`);
+    outputLine(i18n.format(i18n.t('formats.topXMostShared'), {count: topShared.length}) + ':');
     for (let i = 0; i < topShared.length; i++) {
         const [phone, stats] = topShared[i];
-        outputLine(`${i + 1}. ${stats.mostCommonName} (${phone}) - shared ${stats.count} ${pluralize(stats.count, 'time')}`);
+        const unit = i18n.pluralize(stats.count, i18n.t('units.time'));
+        const verb = i18n.conjugateVerb(stats.count, i18n.t('actions.shared'));
+        outputLine(`${i + 1}. ${stats.mostCommonName} (${phone}) - ${verb} ${stats.count} ${unit}`);
 
         // If there are multiple names for this number, show them
         if (stats.names.size > 1) {
@@ -410,20 +433,21 @@ if (vcfAnalysis.size > 0) {
     outputLine();
     
     // Add Top Contacts section
-    addJsonSection('Top Contacts Shared', 
+    addJsonSection(i18n.t('sections.topContactsShared'), 
         topShared.map(([phone, stats]) => ({ 
             name: stats.mostCommonName, 
-            value: `shared ${stats.count} ${pluralize(stats.count, 'time')}` 
+            value: `${i18n.conjugateVerb(stats.count, i18n.t('actions.shared'))} ${stats.count} ${i18n.pluralize(stats.count, i18n.t('units.time'))}` 
         })), 
-        '📞'
+        '📞',
+        true
     );
 
     // Statistics
     const multipleShareCount = sortedPhones.filter(([_, stats]) => stats.count > 1).length;
     const multipleNameCount = sortedPhones.filter(([_, stats]) => stats.names.size > 1).length;
 
-    outputLine(`Contacts shared by multiple people: ${multipleShareCount}`);
-    outputLine(`Contacts with different names: ${multipleNameCount}`);
+    outputLine(`${i18n.t('stats.contactsSharedByMultiple')}: ${multipleShareCount}`);
+    outputLine(`${i18n.t('stats.contactsWithDifferentNames')}: ${multipleNameCount}`);
     outputLine();
 }
 

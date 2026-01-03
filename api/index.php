@@ -113,7 +113,8 @@
         }
 
         input[type="date"],
-        input[type="number"] {
+        input[type="number"],
+        select {
             width: 100%;
             padding: 10px;
             border: 2px solid #e0e0e0;
@@ -123,7 +124,8 @@
         }
 
         input[type="date"]:focus,
-        input[type="number"]:focus {
+        input[type="number"]:focus,
+        select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -392,8 +394,11 @@
                     </div>
                 </div>
                 <div class="option-group">
-                    <label for="topCount">Top Count (number of entries in top lists):</label>
-                    <input type="number" id="topCount" name="topCount" value="5" min="1" max="100">
+                    <label for="language">Output Language:</label>
+                    <select id="language" name="language">
+                        <option value="en" selected>English</option>
+                        <option value="he">עברית (Hebrew)</option>
+                    </select>
                 </div>
             </div>
 
@@ -507,6 +512,7 @@
             formData.append('startDate', document.getElementById('startDate').value);
             formData.append('endDate', document.getElementById('endDate').value);
             formData.append('topCount', document.getElementById('topCount').value);
+            formData.append('language', document.getElementById('language').value);
 
             try {
                 const response = await fetch('api.php', {
@@ -547,7 +553,9 @@
             try {
                 console.log('Starting gallery generation from JSON...');
                 const sections = jsonData.sections || [];
+                const isRTL = jsonData.metadata?.language?.rtl || false;
                 console.log('JSON sections:', sections.length, sections);
+                console.log('Language RTL:', isRTL);
                 
                 if (sections.length === 0) {
                     gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No sections found to display</p>';
@@ -557,7 +565,7 @@
                 sections.forEach((section, index) => {
                     try {
                         console.log(`Generating card ${index + 1}:`, section.title);
-                        const svgDataUri = generateSVG(section, index);
+                        const svgDataUri = generateSVG(section, index, isRTL);
                         const card = document.createElement('div');
                         card.className = 'stat-card';
                         const img = document.createElement('img');
@@ -588,9 +596,12 @@
             gallery.innerHTML = '';
 
             try {
-                console.log('Starting gallery generation...');
+                console.log('Starting gallery generation from text...');
                 const sections = parseResults(text);
+                // Detect RTL from text content
+                const isRTL = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
                 console.log('Parsed sections:', sections.length, sections);
+                console.log('Detected RTL:', isRTL);
                 
                 if (sections.length === 0) {
                     gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No sections found to display</p>';
@@ -600,7 +611,7 @@
                 sections.forEach((section, index) => {
                     try {
                         console.log(`Generating card ${index + 1}:`, section.title);
-                        const svgDataUri = generateSVG(section);
+                        const svgDataUri = generateSVG(section, index, isRTL);
                         const card = document.createElement('div');
                         card.className = 'stat-card';
                         const img = document.createElement('img');
@@ -727,7 +738,7 @@
         }
 
         // Generate SVG for a section
-        function generateSVG(section, sectionIndex = 0) {
+        function generateSVG(section, sectionIndex = 0, isRTL = false) {
             if (!section || !section.items || section.items.length === 0) {
                 throw new Error('Invalid section data');
             }
@@ -752,7 +763,7 @@
                 { bg: '#FFB6C1', text: '#1a1a1a' },      // Light pink
                 { bg: '#87CEEB', text: '#1a1a1a' },      // Sky blue
                 { bg: '#98D8C8', text: '#1a1a1a' },      // Seafoam
-                { bg: '#F7DC6F', text: '#1a1a1a' },       // Golden yellow
+                { bg: '#F7DC6F', text: '#1a1a1a' },      // Golden yellow
                 { bg: '#F6A6B2', text: '#1a1a1a' },      // Soft rose
                 { bg: '#95E1D3', text: '#1a1a1a' },      // Mint green
                 { bg: '#C3B1E1', text: '#1a1a1a' },      // Light purple
@@ -771,37 +782,70 @@
 
             // Header section with icon and title - bigger and more spaced out
             svg += `<text x="${width / 2}" y="120" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.icon)}</text>`;
-            svg += `<text x="${width / 2}" y="190" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.title)}</text>`;
+            
+            // Title - use foreignObject for proper RTL support
+            if (isRTL) {
+                svg += `<foreignObject x="0" y="150" width="${width}" height="60">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <div style="font-family: Arial, sans-serif; font-size: 32px; font-weight: bold; color: ${colors.text}; text-align: center; direction: rtl;">${escapeXml(section.title)}</div>
+                    </div>
+                </foreignObject>`;
+            } else {
+                svg += `<text x="${width / 2}" y="190" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.title)}</text>`;
+            }
 
             // Items - bigger text and more spacing
             let startY = headerHeight + padding + 80;
-            const showNumbers = section.title.toLowerCase().includes('top');
+            const showNumbers = section.isRanked || false;
             section.items.slice(0, maxItems).forEach((item, index) => {
                 const itemY = startY + (index * itemHeight);
                 
                 // Rank circle with dark background - bigger (only for "Top" lists)
                 if (showNumbers) {
-                    svg += `<circle cx="${padding + 25}" cy="${itemY}" r="32" fill="rgba(0,0,0,0.15)"/>`;
-                    svg += `<text x="${padding + 25}" y="${itemY + 9}" font-family="Arial, sans-serif" font-size="30" font-weight="bold" fill="${colors.text}" text-anchor="middle">${index + 1}</text>`;
+                    const circleX = isRTL ? width - padding - 25 : padding + 25;
+                    svg += `<circle cx="${circleX}" cy="${itemY}" r="32" fill="rgba(0,0,0,0.15)"/>`;
+                    svg += `<text x="${circleX}" y="${itemY + 9}" font-family="Arial, sans-serif" font-size="30" font-weight="bold" fill="${colors.text}" text-anchor="middle">${index + 1}</text>`;
                 }
 
                 // Name and value on separate lines
-                const nameX = showNumbers ? padding + 80 : padding + 25;
+                const nameX = isRTL 
+                    ? (showNumbers ? width - padding - 80 : width - padding - 25)
+                    : (showNumbers ? padding + 80 : padding + 25);
+                const textAnchor = isRTL ? 'end' : 'start';
                 let displayName = item.name;
                 const maxNameLength = showNumbers ? 25 : 33;
                 if (displayName.length > maxNameLength) {
                     displayName = displayName.substring(0, maxNameLength) + '...';
                 }
                 
-                // Name on first line
-                svg += `<text x="${nameX}" y="${itemY - 10}" font-family="Arial, sans-serif" font-size="30" font-weight="600" fill="${colors.text}">${escapeXml(displayName)}</text>`;
-                // Value on second line
-                svg += `<text x="${nameX}" y="${itemY + 32}" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="${colors.text}" opacity="0.8">${escapeXml(item.value)}</text>`;
+                // Use foreignObject for RTL text to get proper HTML/CSS support
+                if (isRTL) {
+                    const textWidth = showNumbers ? (width - 120 - padding) : (width - 100);
+                    
+                    // Name on first line
+                    svg += `<foreignObject x="50" y="${itemY - 35}" width="${textWidth}" height="35">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end;">
+                            <div style="font-family: Arial, sans-serif; font-size: 30px; font-weight: 600; color: ${colors.text}; direction: rtl; text-align: right; padding-right: 10px;">${escapeXml(displayName)}</div>
+                        </div>
+                    </foreignObject>`;
+                    
+                    // Value on second line
+                    svg += `<foreignObject x="50" y="${itemY + 5}" width="${textWidth}" height="35">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end;">
+                            <div style="font-family: Arial, sans-serif; font-size: 28px; font-weight: bold; color: ${colors.text}; opacity: 0.8; direction: rtl; text-align: right; padding-right: 10px;">${escapeXml(item.value)}</div>
+                        </div>
+                    </foreignObject>`;
+                } else {
+                    // Name on first line
+                    svg += `<text x="${nameX}" y="${itemY - 10}" font-family="Arial, sans-serif" font-size="30" font-weight="600" fill="${colors.text}" text-anchor="${textAnchor}">${escapeXml(displayName)}</text>`;
+                    // Value on second line
+                    svg += `<text x="${nameX}" y="${itemY + 32}" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="${colors.text}" opacity="0.8" text-anchor="${textAnchor}">${escapeXml(item.value)}</text>`;
+                }
             });
 
             // Footer decoration
             svg += `<rect x="0" y="${height - 50}" width="${width}" height="50" fill="rgba(0,0,0,0.1)"/>`;
-            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="${colors.text}" text-anchor="middle">whatsappwrapped.demolab.com</text>`;
+            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed">whatsappwrapped.demolab.com</text>`;
 
             svg += `</svg>`;
 
@@ -817,6 +861,13 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&apos;');
+        }
+
+        // Helper to format text for RTL display in SVG
+        function formatTextForSVG(text, isRTL) {
+            if (!isRTL) return escapeXml(text);
+            // For RTL, wrap in tspan with proper attributes
+            return escapeXml(text);
         }
 
         // Copy image to clipboard

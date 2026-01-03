@@ -61,7 +61,67 @@ You can also provide a zip file containing the chat export and contact cards (.v
 node script/main.js 'path/to/WhatsApp Chat with Group Name.zip'
 ```
 
+### Advanced Options
+
+You can override config settings by providing additional command-line arguments:
+
+```bash
+node script/main.js <file> [startDate] [endDate] [topCount] [outputFormat] [language]
+```
+
+**Parameters:**
+- `file` (required): Path to the WhatsApp chat export file (.txt or .zip)
+- `startDate` (optional): Start date in YYYY-MM-DD format (default: from config.js)
+- `endDate` (optional): End date in YYYY-MM-DD format (default: from config.js)
+- `topCount` (optional): Number of top entries to show (default: from config.js)
+- `outputFormat` (optional): Output format - `text` or `json` (default: text)
+- `language` (optional): Language code for translations - `en`, `he`, etc. (default: en)
+
+**Examples:**
+
+```bash
+# Use custom date range
+node script/main.js chat.txt 2025-01-01 2025-12-31
+
+# Set top count to 10 and output as JSON
+node script/main.js chat.txt 2025-01-01 2025-12-31 10 json
+
+# Generate output in Hebrew
+node script/main.js chat.txt 2025-01-01 2025-12-31 25 text he
+```
+
 5. The script will output a summary of the chat to the terminal and save results to the `output/` directory
+
+## Language Support & Translations
+
+The tool supports multiple languages for output. Currently available languages:
+
+- **English** (`en`) - Default
+- **Hebrew** (`he`)
+
+### Using a Different Language
+
+To generate output in a different language, pass the language code as the last argument:
+
+```bash
+node script/main.js 'path/to/chat.txt' 2025-01-01 2025-12-31 25 text he
+```
+
+Or use just the required parameters plus language:
+
+```bash
+# Using config.js values for dates and topCount
+node script/main.js 'path/to/chat.txt' '' '' '' text he
+```
+
+### Adding New Translations
+
+To add support for a new language:
+
+1. Create a new file in `script/translations/` named `{language_code}.js` (e.g., `es.js` for Spanish, `fr.js` for French)
+2. Copy the structure from `script/translations/en.js`
+3. Translate all the strings in the new file
+4. The language will automatically be available - just pass its code as the language parameter
 
 ## Example output
 
@@ -218,9 +278,9 @@ Contacts with different names: 65
 
 Upcoming features and improvements may include:
 
-- Support for more languages
 - Generate an image or video summary of the stats for sharing
 - More detailed analytics and visualizations
+- More language support
 
 ## License
 
