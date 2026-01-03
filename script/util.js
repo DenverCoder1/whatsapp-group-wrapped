@@ -700,44 +700,67 @@ function getMonthName(month) {
 
 /**
  * Analyze VCF files from a ZIP and count shared phone numbers
+ * Only counts VCF files that were sent in messages within the date range
  * @param {string} zipFilePath - Path to the ZIP file
  * @param {Function} extractFilesByExtension - Function to extract files from ZIP
+ * @param {Array} messages - Array of message objects to check for VCF references
  * @returns {Map<string, {count: number, names: Map<string, number>, mostCommonName: string}>}
  */
-function analyzeVcfFiles(zipFilePath, extractFilesByExtension) {
+function analyzeVcfFiles(zipFilePath, extractFilesByExtension, messages) {
     const phoneStats = new Map();
 
+    // Extract all VCF files from the ZIP
     const vcfFiles = extractFilesByExtension(zipFilePath, ".vcf");
-
+    
+    // Create a map of VCF filenames for easy lookup
+    const vcfFileMap = new Map();
     for (const vcfFile of vcfFiles) {
-        const contacts = parseVcf(vcfFile.content);
+        // Get just the filename without path
+        const filename = vcfFile.filename.split('/').pop();
+        vcfFileMap.set(filename, vcfFile);
+    }
 
-        for (const contact of contacts) {
-            if (!phoneStats.has(contact.phone)) {
-                phoneStats.set(contact.phone, {
-                    count: 0,
-                    names: new Map(),
-                    mostCommonName: "",
-                });
-            }
+    // Find all messages that reference .vcf files and count each occurrence
+    const vcfPattern = /([^/\\]+\.vcf)/gi;
+    
+    for (const message of messages) {
+        if (!message.text) continue;
+        const matches = message.text.matchAll(vcfPattern);
+        for (const match of matches) {
+            const filename = match[1];
+            if (!vcfFileMap.has(filename)) continue;
+            
+            const vcfFile = vcfFileMap.get(filename);
+            const contacts = parseVcf(vcfFile.content);
 
-            const stats = phoneStats.get(contact.phone);
-            stats.count++;
-
-            // Track how many times each name is used for this phone number
-            const nameCount = stats.names.get(contact.name) || 0;
-            stats.names.set(contact.name, nameCount + 1);
-
-            // Update most common name
-            let maxCount = 0;
-            let mostCommon = "";
-            for (const [name, count] of stats.names) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    mostCommon = name;
+            // Count each contact in this VCF file as a share
+            for (const contact of contacts) {
+                if (!phoneStats.has(contact.phone)) {
+                    phoneStats.set(contact.phone, {
+                        count: 0,
+                        names: new Map(),
+                        mostCommonName: "",
+                    });
                 }
+
+                const stats = phoneStats.get(contact.phone);
+                stats.count++;
+
+                // Track how many times each name is used for this phone number
+                const nameCount = stats.names.get(contact.name) || 0;
+                stats.names.set(contact.name, nameCount + 1);
+
+                // Update most common name
+                let maxCount = 0;
+                let mostCommon = "";
+                for (const [name, count] of stats.names) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        mostCommon = name;
+                    }
+                }
+                stats.mostCommonName = mostCommon;
             }
-            stats.mostCommonName = mostCommon;
         }
     }
 

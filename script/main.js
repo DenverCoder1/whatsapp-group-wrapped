@@ -370,7 +370,7 @@ outputLine("Number of unique emojis:", Object.keys(emojis).length, "\n");
 let vcfAnalysis = new Map();
 if (IMPORT_FILE.toLowerCase().endsWith(".zip")) {
     try {
-        vcfAnalysis = analyzeVcfFiles(IMPORT_FILE, extractFilesByExtension);
+        vcfAnalysis = analyzeVcfFiles(IMPORT_FILE, extractFilesByExtension, messages);
     } catch (error) {
         console.warn(`Warning: Could not analyze VCF files - ${error.message}`);
     }

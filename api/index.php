@@ -767,7 +767,7 @@
                 // Name and value on separate lines
                 const nameX = showNumbers ? padding + 80 : padding + 25;
                 let displayName = item.name;
-                const maxNameLength = showNumbers ? 28 : 35;
+                const maxNameLength = showNumbers ? 25 : 33;
                 if (displayName.length > maxNameLength) {
                     displayName = displayName.substring(0, maxNameLength) + '...';
                 }
