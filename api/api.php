@@ -73,7 +73,7 @@ if ($_FILES['chatFile']['error'] !== UPLOAD_ERR_OK) {
 // Get form parameters
 $startDate = $_POST['startDate'] ?? '2025-01-01';
 $endDate = $_POST['endDate'] ?? '2025-12-31';
-$topCount = intval($_POST['topCount'] ?? 5);
+$topCount = intval($_POST['topCount'] ?? 20);
 $language = $_POST['language'] ?? 'en';
 
 // Validate parameters
@@ -152,6 +152,7 @@ $command = sprintf(
     escapeshellarg($uploadedFilePath),
     escapeshellarg($startDate),
     escapeshellarg($endDate),
+    escapeshellarg((string)$topCount),
     escapeshellarg($language),
     escapeshellarg($jsonOutputPath)
 );
@@ -165,6 +166,7 @@ $textCommand = sprintf(
     escapeshellarg($uploadedFilePath),
     escapeshellarg($startDate),
     escapeshellarg($endDate),
+    escapeshellarg((string)$topCount),
     escapeshellarg($language),
     escapeshellarg($outputFilePath)
 );

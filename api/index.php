@@ -511,7 +511,6 @@
             formData.append('chatFile', fileInput.files[0]);
             formData.append('startDate', document.getElementById('startDate').value);
             formData.append('endDate', document.getElementById('endDate').value);
-            formData.append('topCount', document.getElementById('topCount').value);
             formData.append('language', document.getElementById('language').value);
 
             try {
