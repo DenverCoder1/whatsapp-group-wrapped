@@ -12,9 +12,15 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-color: #10b981;
+            --secondary-color: #059669;
+            --background-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--background-gradient);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -47,7 +53,7 @@
 
         .upload-section {
             background: #f8f9fa;
-            border: 2px dashed #667eea;
+            border: 2px dashed var(--primary-color);
             border-radius: 15px;
             padding: 40px;
             text-align: center;
@@ -56,13 +62,13 @@
         }
 
         .upload-section:hover {
-            border-color: #764ba2;
-            background: #f0f1ff;
+            border-color: var(--secondary-color);
+            background: #f0fdf4;
         }
 
         .upload-section.dragover {
-            background: #e8eaff;
-            border-color: #764ba2;
+            background: #dcfce7;
+            border-color: var(--secondary-color);
         }
 
         .file-input-wrapper {
@@ -75,7 +81,7 @@
         }
 
         .file-label {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--background-gradient);
             color: white;
             padding: 15px 30px;
             border-radius: 25px;
@@ -127,7 +133,7 @@
         input[type="number"]:focus,
         select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary-color);
         }
 
         .date-inputs {
@@ -137,7 +143,7 @@
         }
 
         button[type="submit"] {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--background-gradient);
             color: white;
             border: none;
             padding: 15px 40px;
@@ -171,7 +177,7 @@
 
         .spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border-top: 4px solid var(--primary-color);
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -343,7 +349,7 @@
 
         .info {
             background: #e7f3ff;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid var(--primary-color);
             padding: 15px;
             border-radius: 5px;
             margin-top: 20px;
@@ -361,7 +367,7 @@
         }
 
         .footer a {
-            color: #667eea;
+            color: var(--primary-color);
             text-decoration: none;
             font-weight: 600;
         }
