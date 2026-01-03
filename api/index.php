@@ -857,9 +857,9 @@ $domain = 'whatsappwrapped.demolab.com';
                 throw new Error('Invalid section data');
             }
 
-            // Phone portrait dimensions (9:16 aspect ratio)
+            // Phone portrait dimensions
             const width = 600;
-            const height = 1067; // 16:9 ratio
+            const height = width * (16 / 10);
             const headerHeight = 220;
             const itemHeight = 120;
             const padding = 50;
@@ -953,7 +953,7 @@ $domain = 'whatsappwrapped.demolab.com';
             }
 
             // Items - bigger text and more spacing
-            let startY = headerHeight + padding + 80;
+            let startY = headerHeight + padding + 25;
             const showNumbers = section.isRanked || false;
             section.items.slice(0, maxItems).forEach((item, index) => {
                 const itemY = startY + (index * itemHeight);
