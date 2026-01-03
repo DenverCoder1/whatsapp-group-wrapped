@@ -259,7 +259,7 @@ $domain = 'whatsappwrapped.demolab.com';
         }
 
         .stat-card::after {
-            content: '📋 Click to copy';
+            content: attr(data-action-text);
             position: absolute;
             bottom: 10px;
             right: 10px;
@@ -425,7 +425,7 @@ $domain = 'whatsappwrapped.demolab.com';
                 gap: 10px;
             }
 
-            .results-header > div {
+            .results-header>div {
                 display: flex;
                 flex-direction: column;
                 gap: 10px;
@@ -830,7 +830,9 @@ $domain = 'whatsappwrapped.demolab.com';
                             console.log('Image loaded successfully:', section.title);
                         };
                         card.appendChild(img);
-                        card.addEventListener('click', () => copyImageToClipboard(svgDataUri));
+                        // Set tooltip text based on device
+                        card.setAttribute('data-action-text', isMobileDevice() ? '📤 Click to share' : '📋 Click to copy');
+                        card.addEventListener('click', () => shareOrCopyImage(svgDataUri, section.title));
                         gallery.appendChild(card);
                     } catch (sectionErr) {
                         console.error('Error generating card:', sectionErr, section);
@@ -1053,8 +1055,14 @@ $domain = 'whatsappwrapped.demolab.com';
             return escapeXml(text);
         }
 
-        // Copy image to clipboard
-        async function copyImageToClipboard(dataUri) {
+        // Check if device is mobile
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+        }
+
+        // Share or copy image based on device
+        async function shareOrCopyImage(dataUri, title) {
             try {
                 // Create an image element from the SVG data URI
                 const img = new Image();
@@ -1077,22 +1085,43 @@ $domain = 'whatsappwrapped.demolab.com';
                     canvas.toBlob(resolve, 'image/png');
                 });
 
-                // Copy to clipboard
-                await navigator.clipboard.write([
-                    new ClipboardItem({
-                        'image/png': blob
-                    })
-                ]);
+                // Use Web Share API on mobile if available, otherwise copy to clipboard
+                if (isMobileDevice() && navigator.share) {
+                    const file = new File([blob], `${title}.png`, {
+                        type: 'image/png'
+                    });
+                    await navigator.share({
+                        files: [file],
+                        title: title,
+                        text: `Check out our WhatsApp Wrapped! ${window.location.href}`,
+                        url: window.location.href,
+                    });
 
-                // Show notification
-                const notification = document.getElementById('copyNotification');
-                notification.classList.add('show');
-                setTimeout(() => {
-                    notification.classList.remove('show');
-                }, 2000);
+                    // Show notification
+                    const notification = document.getElementById('copyNotification');
+                    notification.textContent = '✓ Shared successfully!';
+                    notification.classList.add('show');
+                    setTimeout(() => {
+                        notification.classList.remove('show');
+                    }, 2000);
+                } else {
+                    // Copy to clipboard on desktop
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            'image/png': blob
+                        })
+                    ]);
+
+                    // Show notification
+                    const notification = document.getElementById('copyNotification');
+                    notification.textContent = '✓ Image copied to clipboard!';
+                    notification.classList.add('show');
+                    setTimeout(() => {
+                        notification.classList.remove('show');
+                    }, 2000);
+                }
             } catch (err) {
-                console.error('Failed to copy image:', err);
-                alert('Failed to copy image. Try right-clicking and selecting "Copy Image" instead.');
+                console.error('Failed to share/copy image:', err);
             }
         }
     </script>
