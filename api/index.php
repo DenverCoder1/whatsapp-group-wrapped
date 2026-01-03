@@ -261,6 +261,25 @@
             font-size: 14px;
             color: #555;
         }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(102, 126, 234, 0.2);
+            color: #666;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -324,6 +343,10 @@
             2. Upload the .txt or .zip file<br>
             3. Set your date range and preferences<br>
             4. Click "Generate Wrapped" to see your stats!
+        </div>
+
+        <div class="footer">
+            <a href="https://github.com/DenverCoder1/whatsapp-group-wrapped" target="_blank">View on GitHub</a>
         </div>
     </div>
 
