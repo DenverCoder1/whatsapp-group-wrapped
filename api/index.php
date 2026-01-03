@@ -341,7 +341,8 @@ $domain = 'whatsappwrapped.demolab.com';
             padding: 20px;
             max-height: 500px;
             overflow-y: auto;
-            white-space: pre-wrap;
+            overflow-x: auto;
+            white-space: pre;
             font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.6;
@@ -402,6 +403,92 @@ $domain = 'whatsappwrapped.demolab.com';
 
         .footer a:hover {
             text-decoration: underline;
+        }
+
+        /* Mobile-friendly styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .subtitle {
+                font-size: 1em;
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .results-header > div {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .download-btn {
+                width: 100%;
+                text-align: center;
+                padding: 12px 20px;
+                margin: 0 !important;
+            }
+
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+
+            .date-inputs {
+                grid-template-columns: 1fr;
+            }
+
+            .results-content {
+                font-size: 12px;
+                padding: 15px;
+                overflow-x: auto;
+            }
+
+            .upload-section {
+                padding: 30px 20px;
+            }
+
+            .info {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .subtitle {
+                font-size: 0.9em;
+            }
+
+            .file-label {
+                padding: 12px 25px;
+                font-size: 14px;
+            }
+
+            button[type="submit"] {
+                padding: 12px 30px;
+                font-size: 16px;
+            }
+
+            .results-content {
+                font-size: 11px;
+                padding: 10px;
+            }
         }
     </style>
 </head>
