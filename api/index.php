@@ -210,11 +210,32 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             cursor: pointer;
             transition: transform 0.2s ease;
+            position: relative;
         }
 
         .stat-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card::after {
+            content: '📋 Click to copy';
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .stat-card:hover::after {
+            opacity: 1;
         }
 
         .stat-card img {
