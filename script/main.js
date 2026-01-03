@@ -69,8 +69,8 @@ if (!fs.existsSync(outputDir)) {
 const jsonOutput = {
     metadata: {
         groupName: '',
-        startDate: FILTERS.startDate.toISOString().split('T')[0],
-        endDate: FILTERS.endDate.toISOString().split('T')[0],
+        startDate: FILTERS.startDate.toISOString(),
+        endDate: FILTERS.endDate.toISOString(),
         language: {
             code: i18n.getLanguageCode(),
             name: i18n.getLanguageName(),

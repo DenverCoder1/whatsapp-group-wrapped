@@ -619,7 +619,7 @@ $domain = 'whatsappwrapped.demolab.com';
                 sections.forEach((section, index) => {
                     try {
                         console.log(`Generating card ${index + 1}:`, section.title);
-                        const svgDataUri = generateSVG(section, index, isRTL);
+                        const svgDataUri = generateSVG(section, index, isRTL, jsonData.metadata);
                         const card = document.createElement('div');
                         card.className = 'stat-card';
                         const img = document.createElement('img');
@@ -652,7 +652,7 @@ $domain = 'whatsappwrapped.demolab.com';
         }
 
         // Generate SVG for a section
-        function generateSVG(section, sectionIndex = 0, isRTL = false) {
+        function generateSVG(section, sectionIndex = 0, isRTL = false, metadata = null) {
             if (!section || !section.items || section.items.length === 0) {
                 throw new Error('Invalid section data');
             }
@@ -666,7 +666,8 @@ $domain = 'whatsappwrapped.demolab.com';
             const maxItems = Math.min(section.items.length, 5);
 
             // Each card gets a unique bright color - rotate through all colors
-            const colorSchemes = [{
+            const colorSchemes = [
+                {
                     bg: '#FF6B9D',
                     text: '#1a1a1a'
                 }, // Bright pink
@@ -802,8 +803,31 @@ $domain = 'whatsappwrapped.demolab.com';
             });
 
             // Footer decoration
-            svg += `<rect x="0" y="${height - 50}" width="${width}" height="50" fill="rgba(0,0,0,0.1)"/>`;
-            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed"><?= $domain ?></text>`;
+            svg += `<rect x="0" y="${height - 80}" width="${width}" height="80" fill="rgba(0,0,0,0.1)"/>`;
+            
+            // WhatsApp Wrapped title with year/dates
+            let wrappedTitle = 'WhatsApp Wrapped';
+            if (metadata) {
+                const startDate = metadata.startDate ? new Date(metadata.startDate) : null;
+                const endDate = metadata.endDate ? new Date(metadata.endDate) : null;
+                
+                if (startDate && endDate) {
+                    // if it's 1/1 to 12/31 of the same year, show just the year, otherwise show dates
+                    if (startDate.getFullYear() === endDate.getFullYear() &&
+                        startDate.getMonth() === 0 && startDate.getDate() === 1 &&
+                        endDate.getMonth() === 11 && endDate.getDate() === 31) {
+                        wrappedTitle += ` ${startDate.getFullYear()}`;
+                    } else {
+                        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                        const startStr = startDate.toLocaleDateString(undefined, options);
+                        const endStr = endDate.toLocaleDateString(undefined, options);
+                        wrappedTitle += ` ${startStr} - ${endStr}`;
+                    }
+                }
+            }
+            
+            svg += `<text x="${width / 2}" y="${height - 45}" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed">${escapeXml(wrappedTitle)}</text>`;
+            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" opacity="0.8"><?= $domain ?></text>`;
 
             svg += `</svg>`;
 
