@@ -196,6 +196,54 @@
             display: block;
         }
 
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .copy-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .copy-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         .results-header {
             display: flex;
             justify-content: space-between;
@@ -236,6 +284,15 @@
             font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.6;
+        }
+
+        .text-results {
+            margin-top: 30px;
+        }
+
+        .text-results h3 {
+            color: #333;
+            margin-bottom: 15px;
         }
 
         .error {
@@ -315,7 +372,7 @@
                 </div>
                 <div class="option-group">
                     <label for="topCount">Top Count (number of entries in top lists):</label>
-                    <input type="number" id="topCount" name="topCount" value="6" min="1" max="100">
+                    <input type="number" id="topCount" name="topCount" value="5" min="1" max="100">
                 </div>
             </div>
 
@@ -332,17 +389,26 @@
         <div class="results" id="results">
             <div class="results-header">
                 <h2>📊 Results</h2>
-                <a href="#" class="download-btn" id="downloadBtn">⬇️ Download</a>
+                <a href="#" class="download-btn" id="downloadBtn">⬇️ Download Text</a>
             </div>
-            <div class="results-content" id="resultsContent"></div>
+            <div class="gallery" id="gallery"></div>
+            <div class="text-results">
+                <h3>📄 Full Text Results</h3>
+                <div class="results-content" id="resultsContent"></div>
+            </div>
         </div>
+
+        <div class="copy-notification" id="copyNotification">✓ Image copied to clipboard!</div>
 
         <div class="info">
             <strong>💡 How to use:</strong><br>
-            1. Export your WhatsApp group chat (without media)<br>
-            2. Upload the .txt or .zip file<br>
-            3. Set your date range and preferences<br>
-            4. Click "Generate Wrapped" to see your stats!
+            1. Open your WhatsApp group<br>
+            2. Tap the 3 dots menu (⋮) at the top<br>
+            3. Click "More" → "Export chat"<br>
+            4. Select "Without media"<br>
+            5. Upload the .txt or .zip file here<br>
+            6. Set your date range and preferences<br>
+            7. Click "Generate Wrapped" to see your stats!
         </div>
 
         <div class="footer">
@@ -431,6 +497,12 @@
 
                 if (data.success) {
                     resultsContent.textContent = data.output;
+                    // Use JSON data if available, otherwise fall back to text parsing
+                    if (data.json && data.json.sections) {
+                        generateGalleryFromJson(data.json);
+                    } else {
+                        generateGallery(data.output);
+                    }
                     results.classList.add('active');
                     downloadBtn.href = 'api.php?download=' + encodeURIComponent(data.filename);
                 } else {
@@ -445,6 +517,312 @@
                 submitBtn.disabled = false;
             }
         });
+
+        // Parse results and generate gallery from JSON
+        function generateGalleryFromJson(jsonData) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            try {
+                console.log('Starting gallery generation from JSON...');
+                const sections = jsonData.sections || [];
+                console.log('JSON sections:', sections.length, sections);
+                
+                if (sections.length === 0) {
+                    gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No sections found to display</p>';
+                    return;
+                }
+                
+                sections.forEach((section, index) => {
+                    try {
+                        console.log(`Generating card ${index + 1}:`, section.title);
+                        const svgDataUri = generateSVG(section, index);
+                        const card = document.createElement('div');
+                        card.className = 'stat-card';
+                        const img = document.createElement('img');
+                        img.src = svgDataUri;
+                        img.alt = escapeHtml(section.title);
+                        img.onerror = function() {
+                            console.error('Failed to load image for section:', section.title);
+                        };
+                        img.onload = function() {
+                            console.log('Image loaded successfully:', section.title);
+                        };
+                        card.appendChild(img);
+                        card.addEventListener('click', () => copyImageToClipboard(svgDataUri));
+                        gallery.appendChild(card);
+                    } catch (sectionErr) {
+                        console.error('Error generating card:', sectionErr, section);
+                    }
+                });
+            } catch (err) {
+                console.error('Error generating gallery from JSON:', err);
+                gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Could not generate image gallery</p>';
+            }
+        }
+
+        // Parse results and generate gallery
+        function generateGallery(text) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            try {
+                console.log('Starting gallery generation...');
+                const sections = parseResults(text);
+                console.log('Parsed sections:', sections.length, sections);
+                
+                if (sections.length === 0) {
+                    gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No sections found to display</p>';
+                    return;
+                }
+                
+                sections.forEach((section, index) => {
+                    try {
+                        console.log(`Generating card ${index + 1}:`, section.title);
+                        const svgDataUri = generateSVG(section);
+                        const card = document.createElement('div');
+                        card.className = 'stat-card';
+                        const img = document.createElement('img');
+                        img.src = svgDataUri;
+                        img.alt = escapeHtml(section.title);
+                        img.onerror = function() {
+                            console.error('Failed to load image for section:', section.title);
+                        };
+                        img.onload = function() {
+                            console.log('Image loaded successfully:', section.title);
+                        };
+                        card.appendChild(img);
+                        card.addEventListener('click', () => copyImageToClipboard(svgDataUri));
+                        gallery.appendChild(card);
+                    } catch (sectionErr) {
+                        console.error('Error generating card:', sectionErr, section);
+                    }
+                });
+            } catch (err) {
+                console.error('Error generating gallery:', err);
+                gallery.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Could not generate image gallery</p>';
+            }
+        }
+
+        // Helper to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Parse text results into structured sections
+        function parseResults(text) {
+            const sections = [];
+            const lines = text.split('\n');
+            
+            let currentSection = null;
+            let groupName = '';
+            let dateRange = '';
+
+            // Map section titles to icons
+            const iconMap = {
+                'top senders': '📊',
+                'top media senders': '📷',
+                'top question askers': '❓',
+                'top taggers': '🏷️',
+                'top taggees': '👤',
+                'most active days': '📅',
+                'most active hours': '⏰',
+                'word cloud': '☁️',
+                'emoji usage': '😀',
+                'message statistics': '📈',
+                'average messages': '📊',
+                'total messages': '💬'
+            };
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Extract group name from header
+                if (line.includes('WhatsApp Group Wrapped')) {
+                    const match = line.match(/║\s*(.+?)\s*║/);
+                    if (match) {
+                        groupName = match[1].replace('WhatsApp Group Wrapped', '').trim();
+                    }
+                }
+
+                // Detect section headers (lines ending with colon)
+                if (line.endsWith(':') && line.length > 3 && line.length < 50 && !line.includes('http')) {
+                    if (currentSection && currentSection.items.length > 0) {
+                        sections.push(currentSection);
+                    }
+                    
+                    const sectionTitle = line.slice(0, -1); // Remove the colon
+                    const lowerTitle = sectionTitle.toLowerCase();
+                    let icon = '📊'; // Default icon
+                    
+                    // Find matching icon
+                    for (const [key, value] of Object.entries(iconMap)) {
+                        if (lowerTitle.includes(key)) {
+                            icon = value;
+                            break;
+                        }
+                    }
+                    
+                    currentSection = {
+                        title: sectionTitle,
+                        icon: icon,
+                        items: [],
+                        groupName,
+                        dateRange
+                    };
+                } else if (currentSection && line.match(/^[\w\s\+\-\(\)@⁨⁩]+\s+-\s+\d+/)) {
+                    // Parse list items (Name - count)
+                    const match = line.match(/^(.+?)\s+-\s+(.+)$/);
+                    if (match) {
+                        currentSection.items.push({
+                            name: match[1].trim(),
+                            value: match[2].trim()
+                        });
+                    }
+                } else if (currentSection && line.includes(':') && !line.endsWith(':') && !line.startsWith('http')) {
+                    // Parse key-value pairs - only split on first colon
+                    const colonIndex = line.indexOf(':');
+                    if (colonIndex > 0) {
+                        const name = line.substring(0, colonIndex).trim();
+                        const value = line.substring(colonIndex + 1).trim();
+                        if (name && value && value.length > 0) {
+                            currentSection.items.push({
+                                name: name,
+                                value: value
+                            });
+                        }
+                    }
+                }
+            }
+
+            if (currentSection && currentSection.items.length > 0) {
+                sections.push(currentSection);
+            }
+
+            console.log('Final parsed sections:', sections);
+            return sections.filter(s => s.items.length > 0).slice(0, 8); // Limit to top sections
+        }
+
+        // Generate SVG for a section
+        function generateSVG(section, sectionIndex = 0) {
+            if (!section || !section.items || section.items.length === 0) {
+                throw new Error('Invalid section data');
+            }
+
+            // Phone portrait dimensions (9:16 aspect ratio)
+            const width = 600;
+            const height = 1067; // 16:9 ratio
+            const headerHeight = 220;
+            const itemHeight = 120;
+            const padding = 50;
+            const maxItems = Math.min(section.items.length, 5);
+
+            // Each card gets a unique bright color - rotate through all colors
+            const colorSchemes = [
+                { bg: '#FF6B9D', text: '#1a1a1a' },      // Bright pink
+                { bg: '#4ECDC4', text: '#1a1a1a' },      // Turquoise
+                { bg: '#FFD93D', text: '#1a1a1a' },      // Bright yellow
+                { bg: '#FF8C42', text: '#1a1a1a' },      // Bright orange
+                { bg: '#A8E6CF', text: '#1a1a1a' },      // Pastel green
+                { bg: '#BB9AF7', text: '#1a1a1a' },      // Lavender
+                { bg: '#FF6B6B', text: '#1a1a1a' },      // Coral red
+                { bg: '#FFB6C1', text: '#1a1a1a' },      // Light pink
+                { bg: '#87CEEB', text: '#1a1a1a' },      // Sky blue
+                { bg: '#98D8C8', text: '#1a1a1a' },      // Seafoam
+                { bg: '#F7DC6F', text: '#1a1a1a' },       // Golden yellow
+                { bg: '#F6A6B2', text: '#1a1a1a' },      // Soft rose
+                { bg: '#95E1D3', text: '#1a1a1a' },      // Mint green
+                { bg: '#C3B1E1', text: '#1a1a1a' },      // Light purple
+                { bg: '#FFA07A', text: '#1a1a1a' }       // Light salmon
+            ];
+
+            // Use a different color for each section based on its index
+            // We'll need to pass the section index, so use title hash as fallback
+            const colorIndex = sectionIndex % colorSchemes.length;
+            const colors = colorSchemes[colorIndex];
+
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+            
+            // Solid background
+            svg += `<rect width="${width}" height="${height}" fill="${colors.bg}" rx="0"/>`;
+
+            // Header section with icon and title - bigger and more spaced out
+            svg += `<text x="${width / 2}" y="120" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.icon)}</text>`;
+            svg += `<text x="${width / 2}" y="190" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.title)}</text>`;
+
+            // Items - bigger text and more spacing
+            let startY = headerHeight + padding + 80;
+            const showNumbers = section.title.toLowerCase().includes('top');
+            section.items.slice(0, maxItems).forEach((item, index) => {
+                const itemY = startY + (index * itemHeight);
+                
+                // Rank circle with dark background - bigger (only for "Top" lists)
+                if (showNumbers) {
+                    svg += `<circle cx="${padding + 25}" cy="${itemY}" r="32" fill="rgba(0,0,0,0.15)"/>`;
+                    svg += `<text x="${padding + 25}" y="${itemY + 9}" font-family="Arial, sans-serif" font-size="30" font-weight="bold" fill="${colors.text}" text-anchor="middle">${index + 1}</text>`;
+                }
+
+                // Name and value on separate lines
+                const nameX = showNumbers ? padding + 80 : padding + 25;
+                let displayName = item.name;
+                const maxNameLength = showNumbers ? 28 : 35;
+                if (displayName.length > maxNameLength) {
+                    displayName = displayName.substring(0, maxNameLength) + '...';
+                }
+                
+                // Name on first line
+                svg += `<text x="${nameX}" y="${itemY - 10}" font-family="Arial, sans-serif" font-size="30" font-weight="600" fill="${colors.text}">${escapeXml(displayName)}</text>`;
+                // Value on second line
+                svg += `<text x="${nameX}" y="${itemY + 32}" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="${colors.text}" opacity="0.8">${escapeXml(item.value)}</text>`;
+            });
+
+            // Footer decoration
+            svg += `<rect x="0" y="${height - 50}" width="${width}" height="50" fill="rgba(0,0,0,0.1)"/>`;
+            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="${colors.text}" text-anchor="middle">whatsappwrapped.demolab.com</text>`;
+
+            svg += `</svg>`;
+
+            // Use charset=utf-8 and encodeURIComponent for proper encoding
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        }
+
+        // Helper to escape XML special characters
+        function escapeXml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        // Copy image to clipboard
+        async function copyImageToClipboard(dataUri) {
+            try {
+                // Convert data URI to blob
+                const response = await fetch(dataUri);
+                const blob = await response.blob();
+                
+                // Copy to clipboard
+                await navigator.clipboard.write([
+                    new ClipboardItem({
+                        [blob.type]: blob
+                    })
+                ]);
+
+                // Show notification
+                const notification = document.getElementById('copyNotification');
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy image:', err);
+                alert('Failed to copy image. Try right-clicking and selecting "Copy Image" instead.');
+            }
+        }
     </script>
 </body>
 

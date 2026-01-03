@@ -134,11 +134,26 @@ if (!move_uploaded_file($uploadedFile['tmp_name'], $uploadedFilePath)) {
 // Run the Node.js script with arguments
 $outputFileName = 'results_' . $uniqueId . '.txt';
 $outputFilePath = $outputDir . '/' . $outputFileName;
+$jsonOutputPath = $outputDir . '/results_' . $uniqueId . '.json';
 
 $scriptPath = dirname(__DIR__) . '/script/main.js';
 
+// Run with JSON output format
 $command = sprintf(
-    'node %s %s %s %s %s > %s 2>&1',
+    'node %s %s %s %s %s json > %s 2>&1',
+    escapeshellarg($scriptPath),
+    escapeshellarg($uploadedFilePath),
+    escapeshellarg($startDate),
+    escapeshellarg($endDate),
+    escapeshellarg((string)$topCount),
+    escapeshellarg($jsonOutputPath)
+);
+
+exec($command, $output, $returnCode);
+
+// Also generate text output for download
+$textCommand = sprintf(
+    'node %s %s %s %s %s text > %s 2>&1',
     escapeshellarg($scriptPath),
     escapeshellarg($uploadedFilePath),
     escapeshellarg($startDate),
@@ -147,7 +162,7 @@ $command = sprintf(
     escapeshellarg($outputFilePath)
 );
 
-exec($command, $output, $returnCode);
+exec($textCommand, $textOutput, $textReturnCode);
 
 // Clean up uploaded file
 if (file_exists($uploadedFilePath)) {
@@ -155,8 +170,8 @@ if (file_exists($uploadedFilePath)) {
 }
 
 // Check if processing was successful
-if ($returnCode !== 0 || !file_exists($outputFilePath)) {
-    $errorOutput = file_exists($outputFilePath) ? file_get_contents($outputFilePath) : implode("\n", $output);
+if ($returnCode !== 0 || !file_exists($jsonOutputPath)) {
+    $errorOutput = file_exists($jsonOutputPath) ? file_get_contents($jsonOutputPath) : implode("\n", $output);
     echo json_encode([
         'success' => false,
         'error' => 'Processing failed: ' . $errorOutput
@@ -164,13 +179,18 @@ if ($returnCode !== 0 || !file_exists($outputFilePath)) {
     exit;
 }
 
-// Read the results
-$results = file_get_contents($outputFilePath);
+// Read the JSON results
+$jsonResults = file_get_contents($jsonOutputPath);
+$parsedResults = json_decode($jsonResults, true);
 
-// Return success response
+// Read the text results for download
+$textResults = file_exists($outputFilePath) ? file_get_contents($outputFilePath) : '';
+
+// Return success response with both formats
 echo json_encode([
     'success' => true,
-    'output' => $results,
+    'output' => $textResults,
+    'json' => $parsedResults,
     'filename' => $outputFileName
 ]);
 

@@ -18,8 +18,11 @@ function detectChatFormat(chat) {
     const type1Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}(?: (?:AM|PM))?/gm) || []).length;
     const type2Matches = (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length;
     const type3Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length;
+    const type4Matches = (chat.match(/^\d{1,2}\.\d{1,2}\.\d{4}, \d{1,2}:\d{2}/gm) || []).length;
     let chatFormat = type1Matches > type2Matches ? 1 : 2;
-    return type3Matches > type1Matches ? 3 : chatFormat;
+    if (type3Matches > type1Matches) chatFormat = 3;
+    if (type4Matches > type3Matches) chatFormat = 4;
+    return chatFormat;
 }
 
 /**
@@ -32,6 +35,8 @@ function getMessageRegex(chatFormat) {
         return /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
     } else if (chatFormat === 3) {
         return /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+    } else if (chatFormat === 4) {
+        return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) - ([^:]+): /;
     }
     return /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
 }
@@ -59,6 +64,13 @@ function parseMessageMatch(match, chatFormat, tagToName) {
         minute = Number(match[5]);
         sender = match[8];
     } else if (chatFormat === 3) {
+        year = Number(match[3]);
+        day = Number(match[1]);
+        month = Number(match[2]);
+        hour = Number(match[4]);
+        minute = Number(match[5]);
+        sender = match[6];
+    } else if (chatFormat === 4) {
         year = Number(match[3]);
         day = Number(match[1]);
         month = Number(match[2]);
