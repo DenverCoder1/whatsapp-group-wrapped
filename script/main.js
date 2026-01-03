@@ -172,7 +172,7 @@ fs.writeFileSync(
 );
 
 // ASCII art greeting
-const bannerLines = createBanner(FILTERS.startDate, FILTERS.endDate, groupName);
+const bannerLines = createBanner(FILTERS.startDate, FILTERS.endDate, groupName, i18n);
 bannerLines.forEach((line) => outputLine(line));
 outputLine();
 

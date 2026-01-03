@@ -140,6 +140,7 @@ module.exports = {
     // Messages
     messages: {
         totalMessagesWithMedia: 'סה"כ הודעות עם מדיה',
-        alsoKnownAs: 'שמות אחרים'
+        alsoKnownAs: 'שמות אחרים',
+        welcomeToYour: 'ברוכים הבאים ל'
     }
 };

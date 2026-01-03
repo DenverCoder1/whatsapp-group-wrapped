@@ -806,10 +806,11 @@ function generateCsv(messages) {
  * @param {Date} startDate - Start date
  * @param {Date} endDate - End date
  * @param {string} groupName - Group name (optional)
+ * @param {Object} i18n - Translation object (optional)
  * @returns {Array<string>} - Array of banner lines
  */
-function createBanner(startDate, endDate, groupName) {
-    const welcome = "Welcome to Your";
+function createBanner(startDate, endDate, groupName, i18n = null) {
+    const welcome = i18n ? i18n.t('messages.welcomeToYour') : "Welcome to Your";
     const title = getWrappedTitle(startDate, endDate);
     const lines = [];
     const boxWidth = 4 + Math.max(welcome.length, title.length, groupName ? groupName.length : 0, 46);

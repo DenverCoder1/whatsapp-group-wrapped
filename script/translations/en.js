@@ -117,6 +117,7 @@ module.exports = {
     // Messages
     messages: {
         totalMessagesWithMedia: 'Total messages with media',
-        alsoKnownAs: 'Also known as'
+        alsoKnownAs: 'Also known as',
+        welcomeToYour: 'Welcome to Your'
     }
 };
