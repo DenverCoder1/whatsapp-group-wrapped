@@ -868,7 +868,6 @@ $domain = 'whatsappwrapped.demolab.com';
                 downloadImagesBtn.style.pointerEvents = 'none';
 
                 const zip = new JSZip();
-                const imgFolder = zip.folder('whatsapp-wrapped-images');
 
                 // Convert each SVG to PNG and add to zip
                 for (let i = 0; i < currentSvgDataUris.length; i++) {
@@ -886,7 +885,7 @@ $domain = 'whatsappwrapped.demolab.com';
                             // Convert to PNG blob
                             canvas.toBlob((blob) => {
                                 if (blob) {
-                                    imgFolder.file(`image-${i + 1}.png`, blob);
+                                    zip.file(`image-${i + 1}.png`, blob);
                                     resolve();
                                 } else {
                                     reject(new Error('Failed to convert image'));
