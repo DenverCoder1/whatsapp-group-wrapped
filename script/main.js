@@ -28,6 +28,14 @@ const {
 const fs = require("node:fs");
 const path = require("node:path");
 
+// Create a log file for errors and warnings
+const logStream = fs.createWriteStream(path.join(__dirname, "..", "output", "debug.log"), { flags: "a" });
+function logMessage(level, ...args) {
+    const timestamp = new Date().toISOString();
+    const message = args.join(" ");
+    logStream.write(`[${timestamp}] [${level}] ${message}\n`);
+}
+
 // check if a parameter is passed to the script
 if (process.argv.length < 3) {
     console.error("Please provide a file to analyze");
@@ -413,7 +421,7 @@ if (IMPORT_FILE.toLowerCase().endsWith(".zip")) {
     try {
         vcfAnalysis = analyzeVcfFiles(IMPORT_FILE, extractFilesByExtension, messages);
     } catch (error) {
-        console.warn(`Warning: Could not analyze VCF files - ${error.message}`);
+        logMessage('WARN', `Could not analyze VCF files - ${error.message}`);
     }
 }
 
