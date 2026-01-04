@@ -114,7 +114,7 @@ module.exports = {
     // Format strings (use {0}, {1}, etc. for placeholders)
     formats: {
         xMessages: '{count} {unit}',
-        taggedXTime: 'menzionato {count} {unit}',
+        taggedXTime: 'menzionato/a {count} {unit}',
         sharedXTime: 'condiviso {count} {unit}',
         topXMostShared: 'I {count} contatti più condivisi',
         hourFormat: '{hour}:00'
