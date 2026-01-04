@@ -86,7 +86,7 @@ function parseMessageMatch(match, chatFormat, tagToName) {
 
     // Convert phone numbers to names if found
     const senderDigits = (sender ?? "").replaceAll(/\D/g, "");
-    if (/[\d\s+-]/.test(sender) && tagToName[`@${senderDigits}`]) {
+    if (tagToName && /[\d\s+-]/.test(sender) && tagToName[`@${senderDigits}`]) {
         sender = tagToName[`@${senderDigits}`];
     }
 

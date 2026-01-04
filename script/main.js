@@ -27,7 +27,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 // if config.js exists, load it; otherwise use defaults
-let { TAG_TO_NAME } = {};
+let TAG_TO_NAME = {};
 // Load config.js if it exists
 const configPath = path.join(__dirname, "config.js");
 if (fs.existsSync(configPath)) {
