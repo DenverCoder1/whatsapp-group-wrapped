@@ -376,7 +376,7 @@ $domain = 'whatsappwrapped.demolab.com';
         }
 
         .rename-senders-header {
-            padding: 15px 25px;
+            padding: 10px 20px;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -736,7 +736,7 @@ $domain = 'whatsappwrapped.demolab.com';
             </div>
             <div class="rename-senders" id="renameSenders">
                 <div class="rename-senders-header" id="renameSendersHeader">
-                    <h3>✏️ Rename Senders (Advanced)</h3>
+                    <h4>✏️ Rename Senders (Advanced)</h4>
                     <span class="rename-senders-toggle">▼</span>
                 </div>
                 <div class="rename-senders-content">
