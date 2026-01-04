@@ -2,15 +2,16 @@
 
 Create a summary of stats from a WhatsApp group export
 
-## Usage
+Get yours at [https://whatsappwrapped.demolab.com](https://whatsappwrapped.demolab.com/)!
+
+## Developer Usage
 
 ### Web Interface (PHP)
 
-For a user-friendly web interface:
+The web interface in the `api/` directory allows you to upload a WhatsApp chat export file and see the generated stats in your browser.
 
 1. Make sure you have PHP and Node.js installed on your computer
-2. Copy `script/example.config.js` to `script/config.js` (the web interface will temporarily override some settings)
-3. Start a PHP server in the project directory:
+2. Start a PHP server in the project directory:
 
 ```bash
 php -S localhost:8000 -t api -c api/php.ini
@@ -26,44 +27,19 @@ php -S localhost:8000 -t api -c api/php.ini
 
 ### Command Line (Node.js)
 
+The command line script in the `script/` directory allows you to generate the WhatsApp Group Wrapped summary directly in the terminal and is the same script used by the web interface.
+
 1. Export a WhatsApp group chat from the WhatsApp app on your phone:
     - Open the group chat
     - Tap the 3 dots at the top, then "More > Export chat"
     - Choose "Without media"
     - Share the chat export to your computer
 2. Make sure `node` is installed on your computer (https://nodejs.org/)
-3. Copy `script/example.config.js` to `script/config.js` and fill in values as needed:
-    - Set `FILTERS.startDate` to contain the date you want to start counting messages from (ensure the year is correct)
-    - Set `FILTERS.endDate` to contain the date you want to stop counting messages from
-    - Set `TOP_COUNT` to the number of entries to show in the top lists
-    - Optionally, populate `TAG_TO_NAME` with a mapping of phone numbers to names using the provided format as an example
-4. Run the script with the path to your exported chat file:
-
-```bash
-node script/main.js 'path/to/WhatsApp Chat with Group Name.txt'
-```
-
-Or from the `script` directory:
-
-```bash
-node main.js 'path/to/WhatsApp Chat with Group Name.txt'
-```
-
-Replace the path with the path to the exported chat file. If, for example, the chat file is in the same directory as the script and is named `chat.txt`, you would run:
-
-```bash
-node script/main.js 'chat.txt'
-```
-
-You can also provide a zip file containing the chat export and contact cards (.vcf files). The script will extract the chat text file from the zip to process as well as provide an analysis of contact cards shared in the chat.
-
-```bash
-node script/main.js 'path/to/WhatsApp Chat with Group Name.zip'
-```
-
-### Advanced Options
-
-You can override config settings by providing additional command-line arguments:
+3. **(Optional)** Create `script/config.js` to map phone numbers to names:
+    - Copy `script/example.config.js` to `script/config.js`
+    - Populate `TAG_TO_NAME` with a mapping of phone numbers to names (e.g., `"@12025551212": "John Doe"`)
+    - This is only needed if you want to display names instead of phone numbers in sections where contact names are not available
+4. Run the script with the path to your exported chat file.
 
 ```bash
 node script/main.js <file> [startDate] [endDate] [topCount] [outputFormat] [language]
@@ -71,23 +47,34 @@ node script/main.js <file> [startDate] [endDate] [topCount] [outputFormat] [lang
 
 **Parameters:**
 - `file` (required): Path to the WhatsApp chat export file (.txt or .zip)
-- `startDate` (optional): Start date in YYYY-MM-DD format (default: from config.js)
-- `endDate` (optional): End date in YYYY-MM-DD format (default: from config.js)
-- `topCount` (optional): Number of top entries to show (default: from config.js)
-- `outputFormat` (optional): Output format - `text` or `json` (default: text)
-- `language` (optional): Language code for translations - `en`, `he`, etc. (default: en)
+- `startDate` (optional): Start date in YYYY-MM-DD format
+  - Default: January 1st of last year (or current year if run in December)
+- `endDate` (optional): End date in YYYY-MM-DD format
+  - Default: December 31st of last year (or current year if run in December)
+- `topCount` (optional): Number of top entries to show in lists
+  - Default: 25
+- `outputFormat` (optional): Output format - `text` or `json`
+  - Default: text
+- `language` (optional): Language code for output translations - `en`, `he`, etc.
+  - Default: en
 
 **Examples:**
 
 ```bash
-# Use custom date range
-node script/main.js chat.txt 2025-01-01 2025-12-31
+# Basic usage - uses smart defaults for year
+node script/main.js chat.zip
 
-# Set top count to 10 and output as JSON
-node script/main.js chat.txt 2025-01-01 2025-12-31 10 json
+# Custom date range for a specific year
+node script/main.js chat.zip 2025-01-01 2025-12-31
+
+# Show top 10 entries and output as JSON
+node script/main.js chat.zip 2025-01-01 2025-12-31 10 json
 
 # Generate output in Hebrew
-node script/main.js chat.txt 2025-01-01 2025-12-31 25 text he
+node script/main.js chat.zip 2025-01-01 2025-12-31 25 text he
+
+# Skip optional middle arguments with empty strings
+node script/main.js chat.zip '' '' '' text he
 ```
 
 5. The script will output a summary of the chat to the terminal and save results to the `output/` directory
@@ -98,21 +85,6 @@ The tool supports multiple languages for output. Currently available languages:
 
 - **English** (`en`) - Default
 - **Hebrew** (`he`)
-
-### Using a Different Language
-
-To generate output in a different language, pass the language code as the last argument:
-
-```bash
-node script/main.js 'path/to/chat.txt' 2025-01-01 2025-12-31 25 text he
-```
-
-Or use just the required parameters plus language:
-
-```bash
-# Using config.js values for dates and topCount
-node script/main.js 'path/to/chat.txt' '' '' '' text he
-```
 
 ### Adding New Translations
 
@@ -126,159 +98,219 @@ To add support for a new language:
 ## Example output
 
 ```
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║                      Welcome to Your                      ║
-║                WhatsApp Group Wrapped 2025                ║
-║                   Pomegranate Community                   ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════╗
+║                                                  ║
+║                 Welcome to Your                  ║
+║           WhatsApp Group Wrapped 2025            ║
+║              Pomegranate Community               ║
+║                                                  ║
+╚══════════════════════════════════════════════════╝
 
 Top senders:
-Jeffrey Thomas - 127 messages
-Susan Smith - 91 messages
-Eric Thomas - 65 messages
-Arnold Palmer - 57 messages
-Daryl Williams - 50 messages
-Annie Levin - 21 messages
+Jeffrey Thomas - 158 messages
+Susan Smith - 129 messages
+Eric Thomas - 113 messages
+Arnold Palmer - 111 messages
+Daryl Williams - 106 messages
+Annie Levin - 10 messages
+Joe Smith - 7 messages
+Mary Williams - 6 messages
+Nancy Johnson - 5 messages
+Amy Gross - 4 messages
 
 Top media senders:
-Susan Smith - 64 messages with media
-Jeffrey Thomas - 63 messages with media
-Eric Thomas - 46 messages with media
-Daryl Williams - 45 messages with media
-Arnold Palmer - 24 messages with media
-Doris Baker - 15 messages with media
+Susan Smith - 116 messages with media
+Eric Thomas - 103 messages with media
+Daryl Williams - 100 messages with media
+Arnold Palmer - 86 messages with media
+Jeffrey Thomas - 47 messages with media
+Mary Williams - 0 messages with media
+Joe Smith - 0 messages with media
+Annie Levin - 0 messages with media
+Amy Gross - 0 messages with media
+Nancy Johnson - 0 messages with media
 
-Total messages with media: 339
+Total messages with media: 452 
 
 Top question askers:
-Jeffrey Thomas - 3 questions asked
+Jeffrey Thomas - 6 questions asked
 Arnold Palmer - 3 questions asked
-Eric Thomas - 2 questions asked
-Daryl Williams - 1 questions asked
-Amy Gross - 1 questions asked
+Annie Levin - 3 questions asked
+Susan Smith - 3 questions asked
+Eric Thomas - 1 question asked
+Amy Gross - 1 question asked
+Daryl Williams - 1 question asked
 
 Top taggers:
-Susan Smith - 21 tags sent
-Jeffrey Thomas - 11 tags sent
-Joe Smith - 4 tags sent
-Eric Thomas - 3 tags sent
-Daryl Williams - 2 tags sent
+Susan Smith - 4 tags sent
+Jeffrey Thomas - 2 tags sent
 Mary Williams - 2 tags sent
+Annie Levin - 1 tag sent
+Daryl Williams - 1 tag sent
+Arnold Palmer - 0 tags sent
+Joe Smith - 0 tags sent
+Eric Thomas - 0 tags sent
+Amy Gross - 0 tags sent
+Nancy Johnson - 0 tags sent
 
 Top taggees:
-@Nancy Johnson - tagged 4 times
-@Daryl Williams - tagged 4 times
-@Joe Smith - tagged 3 times
-@Mary Williams - tagged 3 times
-@Eric Thomas - tagged 3 times
-@Annie Levin - tagged 2 times
+@⁨Eric Thomas⁩ - tagged 4 times
+@⁨Joe Smith⁩ - tagged 3 times
+@⁨Mary Williams⁩ - tagged 1 time
+@⁨Arnold Palmer⁩ - tagged 1 time
+@⁨Annie Levin⁩ - tagged 1 time
 
-Total messages: 579
+Total messages: 649 
 
-Daily messages: 1.58
+Messages deleted: 6 
 
-Message senders: 29
+Messages deleted by admin: 2 
 
-Top active hours of the day:
-15:00 - 76 messages
-14:00 - 63 messages
-19:00 - 54 messages
-12:00 - 47 messages
-13:00 - 47 messages
-17:00 - 42 messages
+Daily average: 1.78 
 
-Top active days of the week:
-Wednesday - 114 messages
-Monday - 102 messages
-Sunday - 99 messages
-Tuesday - 91 messages
-Friday - 87 messages
-Thursday - 75 messages
-Saturday - 11 messages
+Message senders: 10 
 
-Top active months of the year:
-January - 58 messages
-September - 58 messages
-July - 56 messages
-June - 55 messages
-November - 54 messages
-October - 53 messages
-February - 52 messages
-August - 52 messages
-April - 45 messages
-March - 43 messages
-May - 43 messages
-December - 10 messages
+Most Active Hours:
+14:00 - 65 messages
+11:00 - 63 messages
+12:00 - 63 messages
+13:00 - 60 messages
+15:00 - 59 messages
+19:00 - 58 messages
+10:00 - 57 messages
+16:00 - 56 messages
+18:00 - 53 messages
+17:00 - 52 messages
+9:00 - 43 messages
+8:00 - 14 messages
+20:00 - 6 messages
 
-Members who joined: 341
+Most Active Days:
+Wednesday - 115 messages
+Thursday - 103 messages
+Tuesday - 99 messages
+Monday - 98 messages
+Friday - 82 messages
+Saturday - 80 messages
+Sunday - 72 messages
 
-Members who left: 20 
+Most Active Months:
+January - 152 messages
+February - 87 messages
+March - 58 messages
+April - 44 messages
+June - 44 messages
+July - 44 messages
+August - 44 messages
+September - 44 messages
+October - 44 messages
+November - 44 messages
+May - 33 messages
+December - 11 messages
 
-Messages pinned: 9
+Members joined: 5 
 
-Total number of words sent: 7967
+Total words sent: 975 
 
-Average number of words per message: 36.55
+Words per message: 5.1 
 
-Top words:
-to - 320 times
-and - 239 times
-the - 226 times
-a - 188 times
-for - 167 times
-up - 121 times
+Top Words:
+everyone - 40 times
+morning - 31 times
+community - 31 times
+for - 26 times
+great - 25 times
+the - 22 times
+happy - 21 times
+celebration - 20 times
+good - 20 times
+a - 17 times
+celebrations - 16 times
+file - 15 times
+attached - 15 times
+this - 14 times
+you - 12 times
+to - 11 times
+i'll - 10 times
+time - 9 times
+have - 9 times
+anyone - 8 times
+another - 8 times
+day - 8 times
+is - 7 times
+next - 7 times
+i - 7 times
 
-Top uncommon words:
-tonight - 38 times
-community - 35 times
-everyone - 29 times
-celebrate - 28 times
-celebration - 27 times
-excited - 26 times
+Top Uncommon Words:
+everyone - 40 times
+community - 31 times
+celebration - 20 times
+celebrations - 16 times
+file - 15 times
+attached - 15 times
+anyone - 8 times
+another - 8 times
+today - 7 times
+thanks - 6 times
+coming - 5 times
+looking - 5 times
+tonight - 5 times
+weekend - 5 times
+excited - 4 times
+smith - 4 times
+moving - 4 times
+phone - 4 times
+amazing - 4 times
+let's - 4 times
+eric - 4 times
+thomas - 4 times
+month's - 4 times
+friday - 4 times
+needs - 3 times
 
-Top emoji senders:
-Arnold Palmer - 116 emojis
-Jeffrey Thomas - 105 emojis
-Susan Smith - 80 emojis
-Daryl Williams - 54 emojis
-Eric Thomas - 49 emojis
-Amy Gross - 24 emojis
+Top Emoji Senders:
+Jeffrey Thomas - 142 emojis
+Arnold Palmer - 32 emojis
+Annie Levin - 6 emojis
+Joe Smith - 5 emojis
+Mary Williams - 4 emojis
+Eric Thomas - 2 emojis
+Amy Gross - 0 emojis
+Nancy Johnson - 0 emojis
+Susan Smith - 0 emojis
+Daryl Williams - 0 emojis
 
-Top emojis:
-🎉 - 29 times
-📣 - 14 times
-🕯️ - 12 times
-🍷 - 11 times
-🔥 - 8 times
-🍕 - 7 times
+Top Emojis:
+🎉 - 27 times
+📣 - 27 times
+🍷 - 14 times
+🔥 - 12 times
+🕯️ - 9 times
+🍕 - 2 times
 
-Total unique phone numbers sent as contacts: 484
+Number of unique emojis: 6 
+
+Total unique phone numbers sent as contacts: 6
 
 Top 6 most shared contacts:
-1. Smith Appliance Repair (201-555-0142) - shared 10 times
-   Also known as: Smith Appliance Repair (2), Danny Smith (2), Daniel Smith Handyman (1), Smith's Appliance Service (1), Daniel Smith (Technician) (1), Danny Smith Appliance Repair (1), Daniel Smith Repairs (1), Danny Smith Appliances (1)
-2. Johnson Handyman Services (201-555-0207) - shared 9 times
-   Also known as: Johnson Handyman Services (2), John Movers (1), J. Johnson Van (1), Johnson Moving (1), Johnson Van & Mover (1), J Johnson (1), Johnson Small Moving (1), Johnson's Handyman (1)
-3. Mike Williams (201-555-0224) - shared 7 times
-   Also known as: Mike Williams (2), Michael W. (1), M. Williams (1), Mike Williams Electrician (1), Mike (1), Mike Williams Handyman (1)
-4. Sarah Davis (201-555-0909) - shared 7 times
-   Also known as: Sarah Davis (1), Sarah Seamstress (1), Sarah Jane Davis (1), Sarah Davis Alterations (1), Sarah Davis Seamstress (1), Sarah Davis Tailor (1), Sarah Jane Davis Seamstress (1)
-5. Robert Brown (201-555-0937) - shared 7 times
-   Also known as: Robert Brown (1), Bob's Phone Repair (1), Bob Phone & Laptop (1), Robert Brown Phone Repair (1), Robert Brown - Tech Repairs (1), Robert Brown (1), Bob's Tech Repairs (1)
-6. Aaron Movers (201-555-0409) - shared 6 times
-   Also known as: Aaron Movers (2), Aaron's Moving Service (1), Aaron Mover (1), A. Moving Co. (1), Aaron Moving Guy (1)
+1. Bob's Phone Repair (+12015550937) - shared 5 times
+   Also known as: Bob's Phone Repair (2), Bob Phone & Laptop (1), Robert Brown - Tech Repairs (1), Robert Brown (1)
+2. J Johnson (+12015550207) - shared 3 times
+   Also known as: J Johnson (1), J. Johnson Van (1), John Movers (1)
+3. A. Moving Co. (+12015550409) - shared 3 times
+   Also known as: A. Moving Co. (1), Aaron's Moving Service (1), Aaron Mover (1)
+4. Mike (+12015550224) - shared 2 times
+5. Daniel Smith (Technician) (+12015550142) - shared 1 time
+6. Sarah Davis Alterations (+12015550909) - shared 1 time
 
-Contacts shared by multiple people: 68
-Contacts with different names: 65
+Contacts shared by multiple people: 4
+Contacts with different names: 3
 ```
 
 ## What's next?
 
 Upcoming features and improvements may include:
 
-- Generate an image or video summary of the stats for sharing
 - More detailed analytics and visualizations
 - More language support
 

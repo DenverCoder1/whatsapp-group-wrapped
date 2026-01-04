@@ -3,10 +3,8 @@
  * Run script with: `node main.js <file> [startDate] [endDate] [topCount] [outputFormat] [language]`
  */
 
-let { FILTERS, TAG_TO_NAME, TOP_COUNT } = require("./config.js");
 const { extractFirstFileByExtension, extractFilesByExtension } = require("./zip-extractor.js");
 const Translations = require("./translations.js");
-
 const {
     detectChatFormat,
     getTopEntries,
@@ -27,6 +25,14 @@ const {
 } = require("./util.js");
 const fs = require("node:fs");
 const path = require("node:path");
+
+// if config.js exists, load it; otherwise use defaults
+let { TAG_TO_NAME } = {};
+// Load config.js if it exists
+const configPath = path.join(__dirname, "config.js");
+if (fs.existsSync(configPath)) {
+    ({ TAG_TO_NAME } = require(configPath));
+}
 
 // Create output directory
 const outputDir = process.env.VERCEL ? "/tmp/output" : path.join(__dirname, "..", "output");
@@ -61,28 +67,34 @@ if (process.argv.length < 3) {
 // read the chat file
 const IMPORT_FILE = process.argv[2];
 
-// Optional arguments to override config: startDate, endDate, topCount, outputFormat, language
-let OUTPUT_FORMAT = "text"; // default to text
-let LANGUAGE = "en"; // default to English
-let requestStartDate = FILTERS.startDate.toISOString().split("T")[0];
-let requestEndDate = FILTERS.endDate.toISOString().split("T")[0];
-if (process.argv[3] !== undefined) {
-    const startDate = process.argv[3] || FILTERS.startDate.toISOString().split("T")[0];
-    const endDate = process.argv[4] || FILTERS.endDate.toISOString().split("T")[0];
-    const topCount = process.argv[5] ? Number.parseInt(process.argv[5], 10) : TOP_COUNT;
-    const outputFormat = process.argv[6] || "text";
-    const language = process.argv[7] || "en";
-
-    FILTERS = {
-        startDate: new Date(startDate + "T00:00:00"),
-        endDate: new Date(endDate + "T23:59:59"),
-    };
-    requestStartDate = startDate;
-    requestEndDate = endDate;
-    TOP_COUNT = topCount;
-    OUTPUT_FORMAT = outputFormat;
-    LANGUAGE = language;
+// Optional arguments: startDate, endDate, topCount, outputFormat, language
+let startDate = process.argv[3] || "";
+let endDate = process.argv[4] || "";
+// ISO date format validation
+const isoDatetimeRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(Z|([+-]\d{2}:\d{2})))?$/;
+if (!isoDatetimeRegex.test(startDate)) {
+    // default to 1/1 of last year, unless it is December, then use this year
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const defaultStartYear = currentMonth === 11 ? currentYear : currentYear - 1;
+    startDate = `${defaultStartYear}-01-01`;
 }
+if (!isoDatetimeRegex.test(endDate)) {
+    // default to 12/31 of last year, unless it is December, then use this year
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const defaultEndYear = currentMonth === 11 ? currentYear : currentYear - 1;
+    endDate = `${defaultEndYear}-12-31`;
+}
+const TOP_COUNT = process.argv[5] ? Number.parseInt(process.argv[5], 10) : 25;
+const OUTPUT_FORMAT = process.argv[6] || "text";
+const LANGUAGE = process.argv[7] || "en";
+const FILTERS = {
+    startDate: new Date(startDate + "T00:00:00"),
+    endDate: new Date(endDate + "T23:59:59"),
+};
+const requestStartDate = startDate.substring(0, 10);
+const requestEndDate = endDate.substring(0, 10);
 
 // Initialize translations
 const i18n = new Translations(LANGUAGE);
