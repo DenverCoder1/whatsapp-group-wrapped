@@ -362,6 +362,146 @@ $domain = 'whatsappwrapped.demolab.com';
             margin-bottom: 15px;
         }
 
+        .rename-senders {
+            display: none;
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .rename-senders.active {
+            display: block;
+        }
+
+        .rename-senders-header {
+            padding: 15px 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #e9ecef;
+            transition: background 0.2s ease;
+        }
+
+        .rename-senders-header:hover {
+            background: #dee2e6;
+        }
+
+        .rename-senders-header h3 {
+            color: #333;
+            margin: 0;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .rename-senders-toggle {
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+        }
+
+        .rename-senders.expanded .rename-senders-toggle {
+            transform: rotate(180deg);
+        }
+
+        .rename-senders-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 25px;
+        }
+
+        .rename-senders.expanded .rename-senders-content {
+            max-height: 600px;
+            padding: 20px 25px 25px 25px;
+            overflow-y: auto;
+        }
+
+        .rename-senders-description {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        .sender-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .sender-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sender-item label {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .sender-item input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .sender-item input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .rename-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .apply-changes-btn,
+        .clear-nicknames-btn {
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            flex: 1;
+        }
+
+        .apply-changes-btn {
+            background: var(--background-gradient);
+            color: white;
+        }
+
+        .clear-nicknames-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .apply-changes-btn:hover,
+        .clear-nicknames-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .apply-changes-btn:hover {
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .clear-nicknames-btn:hover {
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .apply-changes-btn:disabled,
+        .clear-nicknames-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .error {
             background: #fff3cd;
             border: 2px solid #ffc107;
@@ -441,6 +581,14 @@ $domain = 'whatsappwrapped.demolab.com';
 
             .gallery {
                 grid-template-columns: 1fr;
+            }
+
+            .sender-list {
+                grid-template-columns: 1fr;
+            }
+
+            .rename-buttons {
+                flex-direction: column;
             }
 
             .date-inputs {
@@ -555,6 +703,20 @@ $domain = 'whatsappwrapped.demolab.com';
                     <button class="download-btn" id="copyTextBtn">📋 Copy Text</button>
                 </div>
             </div>
+            <div class="rename-senders" id="renameSenders">
+                <div class="rename-senders-header" id="renameSendersHeader">
+                    <h3>✏️ Rename Senders (Advanced)</h3>
+                    <span class="rename-senders-toggle">▼</span>
+                </div>
+                <div class="rename-senders-content">
+                    <p class="rename-senders-description">Customize sender display names (e.g., replace phone numbers with names). Changes are saved locally and applied when you click "Apply Changes".</p>
+                    <div class="sender-list" id="senderList"></div>
+                    <div class="rename-buttons">
+                        <button class="apply-changes-btn" id="applyChangesBtn">Apply Changes</button>
+                        <button class="clear-nicknames-btn" id="clearNicknamesBtn">Clear All</button>
+                    </div>
+                </div>
+            </div>
             <div class="gallery" id="gallery"></div>
             <div class="text-results">
                 <h3>📄 Full Text Results</h3>
@@ -596,8 +758,50 @@ $domain = 'whatsappwrapped.demolab.com';
         const copyTextBtn = document.getElementById('copyTextBtn');
         const downloadImagesBtn = document.getElementById('downloadImagesBtn');
         const dropZone = document.getElementById('dropZone');
+        const renameSendersSection = document.getElementById('renameSenders');
+        const renameSendersHeader = document.getElementById('renameSendersHeader');
+        const senderListContainer = document.getElementById('senderList');
+        const applyChangesBtn = document.getElementById('applyChangesBtn');
+        const clearNicknamesBtn = document.getElementById('clearNicknamesBtn');
         let currentSvgDataUris = [];
         let currentMetadata = null;
+        let currentJsonData = null;
+        let senderNameMappings = {};
+
+        // Toggle rename senders section
+        renameSendersHeader.addEventListener('click', () => {
+            renameSendersSection.classList.toggle('expanded');
+        });
+
+        // Handle clear nicknames button
+        clearNicknamesBtn.addEventListener('click', () => {
+            if (!confirm('Are you sure you want to clear all saved nicknames?')) {
+                return;
+            }
+
+            // Clear localStorage
+            localStorage.removeItem('whatsappWrappedSenderMappings');
+            senderNameMappings = {};
+
+            // Clear all input fields
+            const inputs = senderListContainer.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.value = '';
+            });
+
+            // Regenerate gallery with original names
+            if (currentJsonData) {
+                generateGalleryFromJson(currentJsonData, true);
+            }
+
+            // Show notification
+            const notification = document.getElementById('copyNotification');
+            notification.textContent = '✓ All nicknames cleared!';
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        });
 
         // Copy text results to clipboard
         copyTextBtn.addEventListener('click', async (e) => {
@@ -811,13 +1015,184 @@ $domain = 'whatsappwrapped.demolab.com';
             }
         });
 
+        // Extract unique senders from JSON data
+        function extractUniqueSenders(jsonData) {
+            const senders = new Set();
+            if (!jsonData || !jsonData.sections) return [];
+
+            // Define section keys that contain actual sender names
+            // These correspond to section keys in the translations files
+            const senderSectionKeys = [
+                'topSenders',
+                'topMediaSenders',
+                'topQuestionAskers',
+                'topTaggers',
+                'topTaggees',
+                'topEmojiSenders'
+            ];
+
+            jsonData.sections.forEach(section => {
+                if (!section.items || !section.items.length) return;
+
+                // Check if this section is one of the sender sections
+                const sectionKey = section.key || '';
+                if (!senderSectionKeys.includes(sectionKey)) return;
+
+                // Only take first 5 items (what's displayed in SVG)
+                section.items.slice(0, 5).forEach(item => {
+                    if (item.name) {
+                        let name = item.name.trim();
+                        // Remove @ symbol if present (for taggees)
+                        if (name.startsWith('@')) {
+                            // replace @ and invisible characters
+                            name = name.substring(1).replace(/[\u2068\u2069]/g, '').trim();
+                        }
+                        senders.add(name);
+                    }
+                });
+            });
+
+            return Array.from(senders).sort();
+        }
+
+        // Load sender name mappings from localStorage
+        function loadSenderMappings() {
+            try {
+                const saved = localStorage.getItem('whatsappWrappedSenderMappings');
+                return saved ? JSON.parse(saved) : {};
+            } catch (e) {
+                console.error('Failed to load sender mappings:', e);
+                return {};
+            }
+        }
+
+        // Save sender name mappings to localStorage
+        function saveSenderMappings(mappings) {
+            try {
+                localStorage.setItem('whatsappWrappedSenderMappings', JSON.stringify(mappings));
+            } catch (e) {
+                console.error('Failed to save sender mappings:', e);
+            }
+        }
+
+        // Populate the rename senders UI
+        function populateRenameSendersUI(senders) {
+            senderListContainer.innerHTML = '';
+
+            if (senders.length === 0) {
+                renameSendersSection.classList.remove('active');
+                return;
+            }
+
+            // Load existing mappings
+            const savedMappings = loadSenderMappings();
+
+            senders.forEach(sender => {
+                const item = document.createElement('div');
+                item.className = 'sender-item';
+
+                const label = document.createElement('label');
+                label.textContent = `Original: ${sender}`;
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = sender;
+                input.value = savedMappings[sender] || '';
+                input.dataset.originalName = sender;
+
+                item.appendChild(label);
+                item.appendChild(input);
+                senderListContainer.appendChild(item);
+            });
+
+            renameSendersSection.classList.add('active');
+        }
+
+        // Apply sender name mappings to JSON data
+        function applyNameMappings(jsonData, mappings) {
+            if (!jsonData || !jsonData.sections) return jsonData;
+
+            // Create a deep copy
+            const modifiedData = JSON.parse(JSON.stringify(jsonData));
+
+            modifiedData.sections.forEach(section => {
+                if (!section.items) return;
+                section.items.forEach(item => {
+                    if (!item.name) return;
+
+                    const originalName = item.name;
+
+                    // Handle @{contact name} format for taggees
+                    if (originalName.startsWith('@')) {
+                        const nameWithoutAt = originalName.substring(1).replace(/[\u2068\u2069]/g, '').trim();
+                        if (mappings[nameWithoutAt]) {
+                            item.name = '@' + mappings[nameWithoutAt];
+                        }
+                    }
+                    // Direct mapping replacement for regular names
+                    else if (mappings[originalName]) {
+                        item.name = mappings[originalName];
+                    }
+                });
+            });
+
+            return modifiedData;
+        }
+
+        // Handle apply changes button
+        applyChangesBtn.addEventListener('click', () => {
+            // Collect all mappings from inputs
+            const inputs = senderListContainer.querySelectorAll('input');
+            const newMappings = {};
+
+            inputs.forEach(input => {
+                const originalName = input.dataset.originalName;
+                const newName = input.value.trim();
+                if (newName && newName !== originalName) {
+                    newMappings[originalName] = newName;
+                }
+            });
+
+            // Save to localStorage
+            saveSenderMappings(newMappings);
+            senderNameMappings = newMappings;
+
+            // Regenerate gallery with new names
+            if (currentJsonData) {
+                const modifiedData = applyNameMappings(currentJsonData, newMappings);
+                generateGalleryFromJson(modifiedData, true);
+            }
+
+            // Show notification
+            const notification = document.getElementById('copyNotification');
+            notification.textContent = '✓ Sender names updated!';
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        });
+
         // Parse results and generate gallery from JSON
-        function generateGalleryFromJson(jsonData) {
+        function generateGalleryFromJson(jsonData, skipRenameUI = false) {
             const gallery = document.getElementById('gallery');
             const resultsContent = document.getElementById('resultsContent');
             gallery.innerHTML = '';
             currentSvgDataUris = [];
             currentMetadata = jsonData.metadata || null;
+
+            // Store the original JSON data and apply saved mappings
+            if (!skipRenameUI) {
+                currentJsonData = jsonData;
+                // Load saved mappings and populate rename UI
+                senderNameMappings = loadSenderMappings();
+                const senders = extractUniqueSenders(jsonData);
+                populateRenameSendersUI(senders);
+
+                // Automatically apply saved mappings if any exist
+                if (Object.keys(senderNameMappings).length > 0) {
+                    jsonData = applyNameMappings(jsonData, senderNameMappings);
+                }
+            }
 
             try {
                 console.log('Starting gallery generation from JSON...');

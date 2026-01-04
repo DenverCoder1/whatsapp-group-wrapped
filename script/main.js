@@ -163,13 +163,15 @@ function outputLine(...args) {
  * @param {string} title - Section title
  * @param {Array} items - Array of {name, value} objects or strings
  * @param {string} icon - Optional icon for the section
+ * @param {string} key - Optional key for the section
  * @param {boolean} isRanked - Whether this section shows ranked items with numbers
  */
-function addJsonSection(title, items, icon = "📊", isRanked = false) {
+function addJsonSection(title, items, icon = "📊", key = "", isRanked = false) {
     if (OUTPUT_FORMAT === "json") {
         jsonOutput.sections.push({
             title,
             icon,
+            key,
             isRanked,
             items: items.map((item) => {
                 if (typeof item === "object" && item.name && item.value) {
@@ -234,6 +236,7 @@ addJsonSection(
     i18n.t("sections.topSenders"),
     top.map(([name, count]) => ({ name, value: `${count} ${i18n.pluralize(count, i18n.t("units.message"))}` })),
     "📊",
+    "topSenders",
     true
 );
 
@@ -252,6 +255,7 @@ addJsonSection(
         value: `${count} ${i18n.pluralize(count, i18n.t("units.messageWithMedia"))}`,
     })),
     "📷",
+    "topMediaSenders",
     true
 );
 
@@ -274,6 +278,7 @@ addJsonSection(
         )}`,
     })),
     "❓",
+    "topQuestionAskers",
     true
 );
 
@@ -298,6 +303,7 @@ if (totalTags > 0) {
             )}`,
         })),
         "🏷️",
+        "topTaggers",
         true
     );
 }
@@ -324,6 +330,7 @@ if (totalTaggees > 0) {
             )}`,
         })),
         "👤",
+        "topTaggees",
         true
     );
 }
@@ -359,7 +366,7 @@ const messageStats = [
 if (pinnedMessages > 0) {
     messageStats.push({ name: i18n.t("stats.messagesPinned"), value: pinnedMessages.toString() });
 }
-addJsonSection(i18n.t("sections.messageStats"), messageStats, "📊");
+addJsonSection(i18n.t("sections.messageStats"), messageStats, "📊", "messageStats", false)
 
 // Add Member Stats section (hide if it's a private chat)
 const isPrivateChat = senderCount === 2 && addedMembers.size === 0 && leftMembers.size === 0;
@@ -371,7 +378,7 @@ if (!isPrivateChat) {
     if (leftMembers.size > 0) {
         memberStats.push({ name: i18n.t("stats.membersLeft"), value: leftMembers.size.toString() });
     }
-    addJsonSection(i18n.t("sections.memberStats"), memberStats, "👥");
+    addJsonSection(i18n.t("sections.memberStats"), memberStats, "👥", "memberStats", false);
 }
 
 // Most active hour of the day
@@ -513,6 +520,7 @@ addJsonSection(
         value: `${emojiString.length} ${i18n.pluralize(emojiString.length, i18n.t("units.emoji"))}`,
     })),
     "😀",
+    "topEmojiSenders",
     true
 );
 
@@ -527,6 +535,7 @@ addJsonSection(
     i18n.t("sections.topEmojis"),
     top.map(([emoji, count]) => ({ name: emoji, value: `${count} ${i18n.pluralize(count, i18n.t("units.time"))}` })),
     "🎉",
+    "topEmojis",
     true
 );
 
@@ -582,6 +591,7 @@ if (vcfAnalysis.size > 0) {
             )}`,
         })),
         "📞",
+        "topContactsShared",
         true
     );
 
