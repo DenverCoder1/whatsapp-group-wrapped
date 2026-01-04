@@ -97,7 +97,8 @@ To add support for a new language:
 1. Create a new file in `script/translations/` named `{language_code}.js` (e.g., `es.js` for Spanish, `fr.js` for French)
 2. Copy the structure from `script/translations/en.js`
 3. Translate all the strings in the new file
-4. The language will automatically be available - just pass its code as the language parameter
+4. Add the new language code and name to the list of supported languages above
+5. The language will automatically be available - just pass its code as the language parameter
 
 ## Example output
 

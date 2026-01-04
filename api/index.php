@@ -679,10 +679,39 @@ $domain = 'whatsappwrapped.demolab.com';
                 <div class="option-group">
                     <label for="language">Output Language:</label>
                     <select id="language" name="language">
-                        <option value="en" selected>English</option>
-                        <option value="he">עברית (Hebrew)</option>
-                        <option value="it">Italiano (Italian)</option>
-                        <option value="ja">日本語 (Japanese)</option>
+                        <?php
+                        // Auto-generate language options from translation files
+                        $translationsDir = __DIR__ . '/../script/translations';
+                        $languages = [];
+
+                        if (is_dir($translationsDir)) {
+                            $files = scandir($translationsDir);
+                            foreach ($files as $file) {
+                                if (pathinfo($file, PATHINFO_EXTENSION) === 'js') {
+                                    $filePath = $translationsDir . '/' . $file;
+                                    $content = file_get_contents($filePath);
+                                    // Extract code and name from the translation file
+                                    if (
+                                        preg_match("/code:\s*['\"](.+)['\"]/", $content, $codeMatch) &&
+                                        preg_match("/name:\s*['\"](.+)['\"]/", $content, $nameMatch)
+                                    ) {
+                                        $code = $codeMatch[1];
+                                        $name = $nameMatch[1];
+                                        $languages[$code] = $name;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Sort by code to ensure consistent order (en first, then alphabetically)
+                        ksort($languages);
+
+                        // Output options
+                        foreach ($languages as $code => $name) {
+                            $selected = $code === 'en' ? ' selected' : '';
+                            echo "<option value=\"$code\"$selected>$name</option>";
+                        }
+                        ?>
                     </select>
                 </div>
             </div>
@@ -811,7 +840,7 @@ $domain = 'whatsappwrapped.demolab.com';
             try {
                 const textContent = '```\n' + resultsContent.textContent + '\n```';
                 await navigator.clipboard.writeText(textContent);
-                
+
                 // Show notification
                 const notification = document.getElementById('copyNotification');
                 notification.textContent = '✓ Text copied to clipboard!';

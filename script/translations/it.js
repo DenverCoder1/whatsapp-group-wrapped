@@ -107,7 +107,7 @@ module.exports = {
     actions: {
         asked: 'chieste',
         sent: 'inviate',
-        tagged: 'menzionato',
+        tagged: 'menzionato/a',
         shared: 'condiviso'
     },
 
