@@ -663,8 +663,9 @@ $domain = 'whatsappwrapped.demolab.com';
                             .replace(/^-+|-+$/g, ''); // Remove leading/trailing dashes
                     }
 
-                    const startDate = currentMetadata.startDate ? new Date(currentMetadata.startDate) : null;
-                    const endDate = currentMetadata.endDate ? new Date(currentMetadata.endDate) : null;
+                    // YYYY-MM-DDTHH:MM:SSZ
+                    const startDate = currentMetadata.startDate;
+                    const endDate = currentMetadata.endDate;
 
                     // Build filename: groupname-wrapped-year
                     if (groupName) {
@@ -674,8 +675,8 @@ $domain = 'whatsappwrapped.demolab.com';
                     }
 
                     if (startDate && endDate) {
-                        const startYear = startDate.getFullYear();
-                        const endYear = endDate.getFullYear();
+                        const startYear = startDate.substring(0, 4);
+                        const endYear = endDate.substring(0, 4);
                         filename += startYear === endYear ? `-${startYear}` : `-${startYear}-${endYear}`;
                     }
                 }
@@ -1012,23 +1013,24 @@ $domain = 'whatsappwrapped.demolab.com';
             // WhatsApp Wrapped title with year/dates
             let wrappedTitle = 'WhatsApp Wrapped';
             if (metadata) {
-                const startDate = metadata.startDate ? new Date(metadata.startDate) : null;
-                const endDate = metadata.endDate ? new Date(metadata.endDate) : null;
+                // YYYY-MM-DDTHH:MM:SSZ -> YYYY-MM-DD
+                const startDate = metadata.startDate.substring(0, 10);
+                const endDate = metadata.endDate.substring(0, 10);
 
                 if (startDate && endDate) {
                     // if it's 1/1 to 12/31 of the same year, show just the year, otherwise show dates
-                    if (startDate.getFullYear() === endDate.getFullYear() &&
-                        startDate.getMonth() === 0 && startDate.getDate() === 1 &&
-                        endDate.getMonth() === 11 && endDate.getDate() === 31) {
-                        wrappedTitle += ` ${startDate.getFullYear()}`;
+                    if (startDate.substring(0, 4) === endDate.substring(0, 4) &&
+                        startDate.substring(5, 10) === '01-01' &&
+                        endDate.substring(5, 10) === '12-31') {
+                        wrappedTitle += ` ${startDate.substring(0, 4)}`;
                     } else {
                         const options = {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric'
                         };
-                        const startStr = startDate.toLocaleDateString(undefined, options);
-                        const endStr = endDate.toLocaleDateString(undefined, options);
+                        const startStr = new Date(startDate).toLocaleDateString(undefined, options);
+                        const endStr = new Date(endDate).toLocaleDateString(undefined, options);
                         wrappedTitle += ` ${startStr} - ${endStr}`;
                     }
                 }

@@ -64,6 +64,8 @@ const IMPORT_FILE = process.argv[2];
 // Optional arguments to override config: startDate, endDate, topCount, outputFormat, language
 let OUTPUT_FORMAT = "text"; // default to text
 let LANGUAGE = "en"; // default to English
+let requestStartDate = FILTERS.startDate.toISOString().split("T")[0];
+let requestEndDate = FILTERS.endDate.toISOString().split("T")[0];
 if (process.argv[3] !== undefined) {
     const startDate = process.argv[3] || FILTERS.startDate.toISOString().split("T")[0];
     const endDate = process.argv[4] || FILTERS.endDate.toISOString().split("T")[0];
@@ -75,6 +77,8 @@ if (process.argv[3] !== undefined) {
         startDate: new Date(startDate + "T00:00:00"),
         endDate: new Date(endDate + "T23:59:59"),
     };
+    requestStartDate = startDate;
+    requestEndDate = endDate;
     TOP_COUNT = topCount;
     OUTPUT_FORMAT = outputFormat;
     LANGUAGE = language;
@@ -87,8 +91,8 @@ const i18n = new Translations(LANGUAGE);
 const jsonOutput = {
     metadata: {
         groupName: "",
-        startDate: FILTERS.startDate.toISOString(),
-        endDate: FILTERS.endDate.toISOString(),
+        startDate: requestStartDate,
+        endDate: requestEndDate,
         language: {
             code: i18n.getLanguageCode(),
             name: i18n.getLanguageName(),
