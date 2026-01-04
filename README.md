@@ -6,6 +6,8 @@ Get yours at [https://whatsappwrapped.demolab.com](https://whatsappwrapped.demol
 
 <a href="https://whatsappwrapped.demolab.com/"><img width="1125" height="600" alt="image" src="https://github.com/user-attachments/assets/5cc79189-d04d-42a8-8ccb-0f4f39c0c822" /></a>
 
+_🔒 Your uploaded chat files are **deleted immediately** after generating your results. Your data is never stored or shared._
+
 ## Developer Usage
 
 ### Web Interface (PHP)
