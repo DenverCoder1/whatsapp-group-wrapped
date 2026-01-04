@@ -1405,7 +1405,31 @@ $domain = 'whatsappwrapped.demolab.com';
             });
 
             // Footer decoration
-            svg += `<rect x="0" y="${height - 80}" width="${width}" height="80" fill="rgba(0,0,0,0.1)"/>`;
+            const hasGroupName = metadata && metadata.groupName && metadata.groupName.trim() !== '';
+            const footerHeight = hasGroupName ? 110 : 80;
+            svg += `<rect x="0" y="${height - footerHeight}" width="${width}" height="${footerHeight}" fill="rgba(0,0,0,0.1)"/>`;
+
+            // Group name (if exists)
+            let footerY = height - footerHeight;
+            if (hasGroupName) {
+                footerY += 30;
+                let groupName = metadata.groupName;
+                const maxGroupNameLength = 35;
+                if (groupName.length > maxGroupNameLength) {
+                    groupName = groupName.substring(0, maxGroupNameLength) + '...';
+                }
+                
+                if (isRTL) {
+                    svg += `<foreignObject x="50" y="${footerY - 22}" width="${width - 100}" height="30">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                            <div style="font-family: Arial, sans-serif; font-size: 22px; font-weight: 600; color: ${colors.text}; text-align: center; direction: rtl;">${escapeXml(groupName)}</div>
+                        </div>
+                    </foreignObject>`;
+                } else {
+                    svg += `<text x="${width / 2}" y="${footerY}" font-family="Arial, sans-serif" font-size="22" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" opacity="0.9">${escapeXml(groupName)}</text>`;
+                }
+            }
+            footerY += 32;
 
             // WhatsApp Wrapped title with year/dates
             let wrappedTitle = 'WhatsApp Wrapped';
@@ -1433,8 +1457,9 @@ $domain = 'whatsappwrapped.demolab.com';
                 }
             }
 
-            svg += `<text x="${width / 2}" y="${height - 45}" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed">${escapeXml(wrappedTitle)}</text>`;
-            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" opacity="0.8"><?= $domain ?></text>`;
+            svg += `<text x="${width / 2}" y="${footerY}" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed">${escapeXml(wrappedTitle)}</text>`;
+            footerY += 30;
+            svg += `<text x="${width / 2}" y="${footerY}" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" opacity="0.8"><?= $domain ?></text>`;
 
             svg += `</svg>`;
 
