@@ -681,6 +681,7 @@ $domain = 'whatsappwrapped.demolab.com';
                     <select id="language" name="language">
                         <option value="en" selected>English</option>
                         <option value="he">עברית (Hebrew)</option>
+                        <option value="it">Italiano (Italian)</option>
                     </select>
                 </div>
             </div>

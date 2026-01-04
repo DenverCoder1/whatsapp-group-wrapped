@@ -87,6 +87,7 @@ The tool supports multiple languages for output. Currently available languages:
 
 - **English** (`en`) - Default
 - **Hebrew** (`he`)
+- **Italian** (`it`)
 
 ### Adding New Translations
 
