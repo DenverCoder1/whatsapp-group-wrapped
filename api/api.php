@@ -181,6 +181,15 @@ if (file_exists($uploadedFilePath)) {
 // Check if processing was successful
 if ($returnCode !== 0 || !file_exists($jsonOutputPath)) {
     $errorOutput = file_exists($jsonOutputPath) ? file_get_contents($jsonOutputPath) : implode("\n", $output);
+    
+    // Clean up output files before returning error
+    if (file_exists($jsonOutputPath)) {
+        unlink($jsonOutputPath);
+    }
+    if (file_exists($outputFilePath)) {
+        unlink($outputFilePath);
+    }
+    
     echo json_encode([
         'success' => false,
         'error' => 'Processing failed: ' . $errorOutput
@@ -194,6 +203,14 @@ $parsedResults = json_decode($jsonResults, true);
 
 // Read the text results for download
 $textResults = file_exists($outputFilePath) ? file_get_contents($outputFilePath) : '';
+
+// Clean up output files after reading
+if (file_exists($jsonOutputPath)) {
+    unlink($jsonOutputPath);
+}
+if (file_exists($outputFilePath)) {
+    unlink($outputFilePath);
+}
 
 // Return success response with both formats
 echo json_encode([

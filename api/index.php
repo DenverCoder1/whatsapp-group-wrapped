@@ -769,6 +769,9 @@ $domain = 'whatsappwrapped.demolab.com';
             <br>
             <strong>⚠️ Troubleshooting:</strong><br>
             If the export returns no results or fails to parse, your chat may be in an unsupported format. Try changing your phone's language settings to English before exporting the chat, as some date/time formats are not yet supported by the parser.
+            <br><br>
+            <strong>🔒 Privacy:</strong><br>
+            Your uploaded chat files are processed securely on our server and <strong>deleted immediately</strong> after generating your results. We do not store or share your data.
         </div>
 
         <div class="footer">
