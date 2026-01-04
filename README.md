@@ -338,6 +338,8 @@ Upcoming features and improvements may include:
 
 - More detailed analytics and visualizations
 - More language support
+- Switch to using [whatsapp-chat-parser](https://www.npmjs.com/package/whatsapp-chat-parser) for improved parsing, this may allow supporting more date formats
+- Detailed media analysis (shared images, videos, location, polls, files, links etc.)
 
 ## License
 
