@@ -339,9 +339,13 @@ This ensures the chat export uses a date/time format that the parser recognizes.
 Upcoming features and improvements may include:
 
 - More detailed analytics and visualizations
-- More language support
-- Switch to using [whatsapp-chat-parser](https://www.npmjs.com/package/whatsapp-chat-parser) for improved parsing, this may allow supporting more date formats
+  - Most active day (eg. 'On June 15, 2025 the most messages were sent')
+  - Longest period of time without messages (eg. 'The group went 2d 5h without sending messages')
+  - Top domains of website links sent
+  - More ideas?
 - Detailed media analysis (shared images, videos, location, polls, files, links etc.)
+- More language support
+- Switch to using [`whatsapp-chat-parser`](https://www.npmjs.com/package/whatsapp-chat-parser) for improved parsing, this may allow supporting more date formats?
 
 ## License
 
