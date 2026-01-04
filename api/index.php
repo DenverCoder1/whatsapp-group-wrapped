@@ -572,7 +572,10 @@ $domain = 'whatsappwrapped.demolab.com';
             4. Select "Without media"<br>
             5. Upload the .txt or .zip file here<br>
             6. Set your date range and preferences<br>
-            7. Click "Generate Wrapped" to see your stats!
+            7. Click "Generate Wrapped" to see your stats!<br>
+            <br>
+            <strong>⚠️ Troubleshooting:</strong><br>
+            If the export returns no results or fails to parse, your chat may be in an unsupported format. Try changing your phone's language settings to English before exporting the chat, as some date/time formats are not yet supported by the parser.
         </div>
 
         <div class="footer">

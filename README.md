@@ -307,6 +307,26 @@ Contacts shared by multiple people: 4
 Contacts with different names: 3
 ```
 
+## Troubleshooting
+
+### No results or parsing errors
+
+If your chat export returns no results or fails to parse, the issue is likely due to an unsupported date/time format. WhatsApp exports use different formats depending on your phone's language and region settings.
+
+**Solution:** Change your phone's language settings to English before exporting the chat:
+
+1. Go to your phone's Settings → Language & Region
+2. Change the language to English (US or UK)
+3. Open WhatsApp and export the chat again
+4. After exporting, you can change your phone's language back
+
+This ensures the chat export uses a date/time format that the parser recognizes.
+
+### Other common issues
+
+- **Upload errors with large files**: Use the PHP server with the `-c php.ini` flag as shown in the setup instructions to increase upload limits.
+- **Missing sender names**: If senders appear as phone numbers, use the `TAG_TO_NAME` configuration to map phone numbers to names.
+
 ## What's next?
 
 Upcoming features and improvements may include:
