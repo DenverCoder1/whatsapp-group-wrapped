@@ -20,6 +20,7 @@ function detectChatFormat(chat) {
         (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length, // Type 1
         (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length, // Type 2
         (chat.match(/^\d{1,2}\.\d{1,2}\.\d{4}, \d{1,2}:\d{2}/gm) || []).length, // Type 3
+        (chat.match(/^\[\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length, // Type 4
     ];
     // if all counts are zero, return null
     if (formatCounts.every((count) => count === 0)) {
@@ -46,6 +47,8 @@ function getMessageRegex(chatFormat) {
             return /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
         case 3:
             return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+        case 4:
+            return /^\[(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
         default:
             throw new Error("Unsupported chat format");
     }
@@ -80,6 +83,20 @@ function parseMessageMatch(match, chatFormat, tagToName) {
         hour = Number(match[4]);
         minute = Number(match[5]);
         sender = match[6];
+    } else if (chatFormat === 4) {
+        // [DD/MM/YYYY, HH:MM:SS AM/PM] format
+        day = Number(match[1]);
+        month = Number(match[2]);
+        year = Number(match[3]);
+        hour = Number(match[4]);
+        minute = Number(match[5]);
+        // match[6] is seconds (ignored)
+        if (match[7] === "PM" && hour !== 12) {
+            hour += 12;
+        } else if (match[7] === "AM" && hour === 12) {
+            hour = 0;
+        }
+        sender = match[8];
     } else {
         year = Number("20" + match[3]);
         day = Number(match[2]);
