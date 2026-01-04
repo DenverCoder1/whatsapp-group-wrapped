@@ -89,9 +89,26 @@ if (!isoDatetimeRegex.test(endDate)) {
 const TOP_COUNT = process.argv[5] ? Number.parseInt(process.argv[5], 10) : 25;
 const OUTPUT_FORMAT = process.argv[6] || "text";
 const LANGUAGE = process.argv[7] || "en";
+
+// Create dates with error handling
+let startDateObj, endDateObj;
+try {
+    startDateObj = new Date(startDate + "T00:00:00");
+    endDateObj = new Date(endDate + "T23:59:59");
+
+    // Check if dates are valid
+    if (Number.isNaN(startDateObj.getTime()) || Number.isNaN(endDateObj.getTime())) {
+        throw new TypeError(`Invalid date format. Start: ${startDate}, End: ${endDate}`);
+    }
+} catch (error) {
+    console.error(`Error parsing dates: ${error.message}`);
+    console.error(`Please use YYYY-MM-DD format (e.g., 2025-01-01)`);
+    process.exit(1);
+}
+
 const FILTERS = {
-    startDate: new Date(startDate + "T00:00:00"),
-    endDate: new Date(endDate + "T23:59:59"),
+    startDate: startDateObj,
+    endDate: endDateObj,
 };
 const requestStartDate = startDate.substring(0, 10);
 const requestEndDate = endDate.substring(0, 10);
@@ -451,7 +468,7 @@ addJsonSection(
     })),
     "📆",
     "mostActiveMonths",
-    true,
+    true
 );
 
 if (addedMembers.size > 0) {
