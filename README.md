@@ -4,6 +4,8 @@ Create a summary of stats from a WhatsApp group export
 
 Get yours at [https://whatsappwrapped.demolab.com](https://whatsappwrapped.demolab.com/)!
 
+<a href="https://whatsappwrapped.demolab.com/"><img width="1125" height="600" alt="image" src="https://github.com/user-attachments/assets/5cc79189-d04d-42a8-8ccb-0f4f39c0c822" /></a>
+
 ## Developer Usage
 
 ### Web Interface (PHP)
