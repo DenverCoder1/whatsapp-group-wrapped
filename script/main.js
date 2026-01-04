@@ -368,7 +368,7 @@ const deletedCount = messages.filter((m) => m.deleted).length;
 outputLine(`${i18n.t("stats.messagesDeleted")}:`, deletedCount, "\n");
 
 // Messages deleted by admin
-const deletedByAdminCount = messages.filter((m) => m.text === "null").length;
+const deletedByAdminCount = messages.filter((m) => m.deletedByAdmin).length;
 outputLine(`${i18n.t("stats.messagesDeletedByAdmin")}:`, deletedByAdminCount, "\n");
 
 // Daily messages (average)

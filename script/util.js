@@ -20,7 +20,7 @@ function detectChatFormat(chat) {
         (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length, // Type 1
         (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length, // Type 2
         (chat.match(/^\d{1,2}\.\d{1,2}\.\d{4}, \d{1,2}:\d{2}/gm) || []).length, // Type 3
-        (chat.match(/^\[\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length, // Type 4
+        (chat.match(/^\[\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}:\d{2}[\s\u202F]+(?:AM|PM)\]/gm) || []).length, // Type 4
     ];
     // if all counts are zero, return null
     if (formatCounts.every((count) => count === 0)) {
@@ -40,15 +40,15 @@ function detectChatFormat(chat) {
 function getMessageRegex(chatFormat) {
     switch (chatFormat) {
         case 0:
-            return /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{1,2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
+            return /^[\s\u200e\u200f\u202a\u202b\u202c\u2068\u2069]*(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{1,2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
         case 1:
-            return /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
+            return /^[\s\u200e\u200f\u202a\u202b\u202c\u2068\u2069]*\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
         case 2:
-            return /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+            return /^[\s\u200e\u200f\u202a\u202b\u202c\u2068\u2069]*(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
         case 3:
-            return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+            return /^[\s\u200e\u200f\u202a\u202b\u202c\u2068\u2069]*(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
         case 4:
-            return /^\[(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
+            return /^[\s\u200e\u200f\u202a\u202b\u202c\u2068\u2069]*\[(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}):(\d{2})[\s\u202F]+(AM|PM)\] (.*?): /;
         default:
             throw new Error("Unsupported chat format");
     }
@@ -807,32 +807,61 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
             return;
         }
 
-        message.deleted =
+        // Normalize message text by removing directional marks, trailing periods, and leading/trailing whitespace
+        const normalizedText = message.text
+            .replaceAll(/[\u200e\u200f\u202a\u202b\u202c\u2068\u2069]/g, "")
+            .trim()
+            .replace(/\.+$/, ""); // Remove trailing period(s)
+        
+        // Check if deleted by admin
+        message.deletedByAdmin =
             message.text === "null" ||
             // English
-            message.text === "This message was deleted" ||
-            message.text === "You deleted this message" ||
+            /This message was deleted by admin/i.test(normalizedText) ||
             // Spanish
-            message.text === "Este mensaje fue eliminado" ||
-            message.text === "Eliminaste este mensaje" ||
+            /Este mensaje fue eliminado por el administrador/i.test(normalizedText) ||
             // German
-            message.text === "Diese Nachricht wurde gelöscht" ||
-            message.text === "Du hast diese Nachricht gelöscht" ||
+            /Diese Nachricht wurde vom Administrator gelöscht/i.test(normalizedText) ||
             // French
-            message.text === "Ce message a été supprimé" ||
-            message.text === "Vous avez supprimé ce message" ||
+            /Ce message a été supprimé par l'administrateur/i.test(normalizedText) ||
             // Italian
-            message.text === "Questo messaggio è stato eliminato" ||
-            message.text === "Hai eliminato questo messaggio" ||
+            /Questo messaggio è stato eliminato dall'amministratore/i.test(normalizedText) ||
             // Portuguese
-            message.text === "Esta mensagem foi apagada" ||
-            message.text === "Você apagou esta mensagem" ||
+            /Esta mensagem foi apagada pelo administrador/i.test(normalizedText) ||
             // Russian
-            message.text === "Это сообщение удалено" ||
-            message.text === "Вы удалили это сообщение" ||
-            // Hebrew (with directional marks removed)
-            message.text.replaceAll(/[\u200e\u200f]/g, "") === "הודעה זו נמחקה" ||
-            message.text.replaceAll(/[\u200e\u200f]/g, "") === "מחקת הודעה זו";
+            /Это сообщение удалено администратором/i.test(normalizedText) ||
+            // Hebrew
+            /הודעה זו נמחקה על ידי המנהל/i.test(normalizedText);
+        
+        // Check if deleted
+        const deletedMessages = [
+            // English
+            "This message was deleted",
+            "You deleted this message",
+            // Spanish
+            "Este mensaje fue eliminado",
+            "Eliminaste este mensaje",
+            // German
+            "Diese Nachricht wurde gelöscht",
+            "Du hast diese Nachricht gelöscht",
+            // French
+            "Ce message a été supprimé",
+            "Vous avez supprimé ce message",
+            // Italian
+            "Questo messaggio è stato eliminato",
+            "Hai eliminato questo messaggio",
+            // Portuguese
+            "Esta mensagem foi apagada",
+            "Você apagou esta mensagem",
+            // Russian
+            "Это сообщение удалено",
+            "Вы удалили это сообщение",
+            // Hebrew
+            "הודעה זו נמחקה",
+            "מחקת הודעה זו"
+        ];
+        
+        message.deleted = message.deletedByAdmin || deletedMessages.includes(normalizedText);
 
         messages.push(message);
     }
