@@ -1,6 +1,13 @@
+# Config
+config.js
+
+# Backup files
+*.backup
+
+# Upload and output directories
 uploads/
 output/
-test/
-.vscode/
 
-.vercel
+# Deployment
+.vercel/
+.vscode/

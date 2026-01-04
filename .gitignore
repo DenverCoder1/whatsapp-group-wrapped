@@ -1,18 +1,13 @@
+# Config
 config.js
-grapheme-splitter.js
 
-*.txt
-*.json
-*.csv
-*.xlsx
-*.zip
-*.vcf
+# Backup files
 *.backup
 
-!common-words*.txt
+# Temporary files
 
-!test/WhatsApp Chat with Pomegranate Community/*.txt
-!test/WhatsApp Chat with Pomegranate Community/*.vcf
+test/actual*.txt
+test/*.zip
 
 # Upload and output directories
 uploads/
