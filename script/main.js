@@ -192,7 +192,9 @@ const CHAT_FORMAT = detectChatFormat(chat);
 
 // If chat format is undetectable, exit with error
 if (CHAT_FORMAT === null) {
-    console.error("Unable to detect chat format. Not all locales are supported. Try setting your phone's language to English and export the chat again.");
+    console.error(
+        "Unable to detect chat format. Not all locales are supported. Try setting your phone's language to English and export the chat again."
+    );
     process.exit(1);
 }
 
@@ -372,7 +374,7 @@ const messageStats = [
 if (pinnedMessages > 0) {
     messageStats.push({ name: i18n.t("stats.messagesPinned"), value: pinnedMessages.toString() });
 }
-addJsonSection(i18n.t("sections.messageStats"), messageStats, "📊", "messageStats", false)
+addJsonSection(i18n.t("sections.messageStats"), messageStats, "📊", "messageStats", false);
 
 // Add Member Stats section (hide if it's a private chat)
 const isPrivateChat = senderCount === 2 && addedMembers.size === 0 && leftMembers.size === 0;
@@ -405,7 +407,9 @@ addJsonSection(
         name: i18n.format(i18n.t("formats.hourFormat"), { hour }),
         value: `${count} ${i18n.pluralize(count, i18n.t("units.message"))}`,
     })),
-    "⏰"
+    "⏰",
+    "mostActiveHours",
+    true
 );
 
 // Most active day of the week
@@ -424,7 +428,9 @@ addJsonSection(
         name: i18n.getDayName(Number(day)),
         value: `${count} ${i18n.pluralize(count, i18n.t("units.message"))}`,
     })),
-    "📅"
+    "📅",
+    "mostActiveDays",
+    true
 );
 
 // Most active month of the year
@@ -443,7 +449,9 @@ addJsonSection(
         name: i18n.getMonthName(Number(month)),
         value: `${count} ${i18n.pluralize(count, i18n.t("units.message"))}`,
     })),
-    "📆"
+    "📆",
+    "mostActiveMonths",
+    true,
 );
 
 if (addedMembers.size > 0) {
@@ -477,11 +485,6 @@ for (const [word, count] of top) {
     outputLine(`${word} - ${count} ${unit}`);
 }
 outputLine();
-addJsonSection(
-    i18n.t("sections.topWords"),
-    top.map(([word, count]) => ({ name: word, value: `${count} ${i18n.pluralize(count, i18n.t("units.time"))}` })),
-    "💬"
-);
 
 // show top uncommon words
 const topUncommon = Object.entries(uncommonWords)
@@ -499,7 +502,9 @@ addJsonSection(
         name: word,
         value: `${count} ${i18n.pluralize(count, i18n.t("units.time"))}`,
     })),
-    "✨"
+    "💬",
+    "topUncommonWords",
+    true
 );
 
 // Add Word Stats section
@@ -507,7 +512,7 @@ const wordStats = [
     { name: i18n.t("stats.totalWordsent"), value: totalWords.toString() },
     { name: i18n.t("stats.wordsPerMessage"), value: avgWordsPerMessage.toString() },
 ];
-addJsonSection(i18n.t("sections.wordStats"), wordStats, "📝");
+addJsonSection(i18n.t("sections.wordStats"), wordStats, "📝", "wordStats", false);
 
 // Top emoji senders, Most common emojis
 top = Object.entries(emojiPerSender)
