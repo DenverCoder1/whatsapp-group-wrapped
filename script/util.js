@@ -12,16 +12,22 @@ function regexEscape(str) {
 /**
  * Detect the format of WhatsApp chat export
  * @param {string} chat - The chat content
- * @returns {number} - Format type (1, 2, or 3)
+ * @returns {number} - Format type (0, 1, 2, 3) or null if undetectable
  */
 function detectChatFormat(chat) {
-    const type1Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}(?: (?:AM|PM))?/gm) || []).length;
-    const type2Matches = (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length;
-    const type3Matches = (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length;
-    const type4Matches = (chat.match(/^\d{1,2}\.\d{1,2}\.\d{4}, \d{1,2}:\d{2}/gm) || []).length;
-    let chatFormat = type1Matches > type2Matches ? 1 : 2;
-    if (type3Matches > type1Matches) chatFormat = 3;
-    if (type4Matches > type3Matches) chatFormat = 4;
+    const formatCounts = [
+        (chat.match(/^\d{1,2}\/\d{1,2}\/\d{2}, \d{2}:\d{2}(?: (?:AM|PM))?/gm) || []).length, // Type 0
+        (chat.match(/^\[\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2}:\d{2} (?:AM|PM)\]/gm) || []).length, // Type 1
+        (chat.match(/^\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}/gm) || []).length, // Type 2
+        (chat.match(/^\d{1,2}\.\d{1,2}\.\d{4}, \d{1,2}:\d{2}/gm) || []).length, // Type 3
+    ];
+    // if all counts are zero, return null
+    if (formatCounts.every((count) => count === 0)) {
+        return null;
+    }
+    // Return index of max count
+    const maxCount = Math.max(...formatCounts);
+    const chatFormat = formatCounts.indexOf(maxCount);
     return chatFormat;
 }
 
@@ -31,14 +37,18 @@ function detectChatFormat(chat) {
  * @returns {RegExp} - The regex pattern
  */
 function getMessageRegex(chatFormat) {
-    if (chatFormat === 2) {
-        return /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
-    } else if (chatFormat === 3) {
-        return /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
-    } else if (chatFormat === 4) {
-        return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+    switch (chatFormat) {
+        case 0:
+            return /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{1,2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
+        case 1:
+            return /^ ?\[(\d{4})-(\d{2})-(\d{2}), (\d{1,2}):(\d{2}):(\d{2}) (AM|PM)\] (.*?): /;
+        case 2:
+            return /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+        case 3:
+            return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
+        default:
+            throw new Error("Unsupported chat format");
     }
-    return /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{1,2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
 }
 
 /**
@@ -51,7 +61,7 @@ function getMessageRegex(chatFormat) {
 function parseMessageMatch(match, chatFormat, tagToName) {
     let year, month, day, hour, minute, sender;
 
-    if (chatFormat === 2) {
+    if (chatFormat === 1) {
         year = Number(match[1]);
         month = Number(match[2]);
         day = Number(match[3]);
@@ -63,7 +73,7 @@ function parseMessageMatch(match, chatFormat, tagToName) {
         }
         minute = Number(match[5]);
         sender = match[8];
-    } else if (chatFormat === 3 || chatFormat === 4) {
+    } else if (chatFormat === 2 || chatFormat === 3) {
         year = Number(match[3]);
         day = Number(match[1]);
         month = Number(match[2]);
@@ -184,7 +194,7 @@ function getSystemMessageType(message) {
         "הודעה הוצמדה על ידי", // Hebrew
     ];
 
-    if (pinnedPatterns.some(pattern => message.text.includes(pattern))) {
+    if (pinnedPatterns.some((pattern) => message.text.includes(pattern))) {
         return "pinned_message";
     }
 
@@ -342,129 +352,201 @@ function hasMedia(text) {
     // Comprehensive multilingual media patterns
     const patterns = [
         // English
-        "<media omitted>", "<image omitted>", "image omitted", "<video omitted>", "video omitted",
-        "<document omitted>", "document omitted", "<audio omitted>", "audio omitted",
-        "<GIF omitted>", "GIF omitted", "<sticker omitted>", "sticker omitted",
+        "<media omitted>",
+        "<image omitted>",
+        "image omitted",
+        "<video omitted>",
+        "video omitted",
+        "<document omitted>",
+        "document omitted",
+        "<audio omitted>",
+        "audio omitted",
+        "<GIF omitted>",
+        "GIF omitted",
+        "<sticker omitted>",
+        "sticker omitted",
         // Spanish
-        "<multimedia omitido>", "<Archivo omitido>", "<imagen omitida>", "imagen omitida",
-        "<video omitido>", "video omitido", "<documento omitido>", "documento omitido",
-        "<audio omitido>", "audio omitido", "<GIF omitido>", "GIF omitido",
-        "<sticker omitido>", "sticker omitido",
+        "<multimedia omitido>",
+        "<Archivo omitido>",
+        "<imagen omitida>",
+        "imagen omitida",
+        "<video omitido>",
+        "video omitido",
+        "<documento omitido>",
+        "documento omitido",
+        "<audio omitido>",
+        "audio omitido",
+        "<GIF omitido>",
+        "GIF omitido",
+        "<sticker omitido>",
+        "sticker omitido",
         // Italian
-        "<media omessi>", "<Media omesso>", "<immagine omessa>", "immagine omessa",
-        "<video omesso>", "video omesso", "<documento omesso>", "documento omesso",
-        "<audio omesso>", "audio omesso", "<GIF esclusa>", "GIF esclusa",
-        "<sticker non incluso>", "sticker non incluso",
+        "<media omessi>",
+        "<Media omesso>",
+        "<immagine omessa>",
+        "immagine omessa",
+        "<video omesso>",
+        "video omesso",
+        "<documento omesso>",
+        "documento omesso",
+        "<audio omesso>",
+        "audio omesso",
+        "<GIF esclusa>",
+        "GIF esclusa",
+        "<sticker non incluso>",
+        "sticker non incluso",
         // Hebrew
-        "<המדיה לא נכללה>", "<מדיה הושמטה>",
+        "<המדיה לא נכללה>",
+        "<מדיה הושמטה>",
         // German
-        "<medien ausgeschlossen>", "<Medien weggelassen>",
+        "<medien ausgeschlossen>",
+        "<Medien weggelassen>",
         // French
-        "<médias omis>", "<Fichier omis>",
+        "<médias omis>",
+        "<Fichier omis>",
         // Portuguese
-        "<ficheiro não revelado>", "<Mídia omitida>",
+        "<ficheiro não revelado>",
+        "<Mídia omitida>",
         // Russian
-        "<без медиафайлов>", "<Файл пропущен>",
+        "<без медиафайлов>",
+        "<Файл пропущен>",
         // Arabic
-        "<تم استبعاد الوسائط>", "<تم استبعاد الوسائط>",
+        "<تم استبعاد الوسائط>",
+        "<تم استبعاد الوسائط>",
         // Chinese
-        "<忽略多媒體檔>", "<省略多媒体文件>",
+        "<忽略多媒體檔>",
+        "<省略多媒体文件>",
         // Japanese
-        "<メディアなし>", "<メディアは含まれていません>",
+        "<メディアなし>",
+        "<メディアは含まれていません>",
         // Korean
-        "<미디어 파일 제외됨>", "<미디어 파일을 생략한 대화내용>",
+        "<미디어 파일 제외됨>",
+        "<미디어 파일을 생략한 대화내용>",
         // Dutch
-        "<media weggelaten>", "<Media weggelaten>",
+        "<media weggelaten>",
+        "<Media weggelaten>",
         // Polish
-        "<pominięto multimedia>", "<pliki pominięto>",
+        "<pominięto multimedia>",
+        "<pliki pominięto>",
         // Turkish
-        "<medya dahil edilmedi>", "<Medya atlanmış>",
+        "<medya dahil edilmedi>",
+        "<Medya atlanmış>",
         // Hindi
         "<मीडिया के बिना>",
         // Bengali
-        "<মিডিয়া বাদ দেওয়া হয়েছে>", "<মিডিয়া বাদ দেওয়া হয়েছে>",
+        "<মিডিয়া বাদ দেওয়া হয়েছে>",
+        "<মিডিয়া বাদ দেওয়া হয়েছে>",
         // Indonesian
         "<media tidak disertakan>",
         // Vietnamese
-        "<bỏ qua tệp phương tiện>", "<Bỏ qua Media>",
+        "<bỏ qua tệp phương tiện>",
+        "<Bỏ qua Media>",
         // Thai
-        "<ไฟล์สื่อถูกลบ>", "<สื่อถูกลบ>",
+        "<ไฟล์สื่อถูกลบ>",
+        "<สื่อถูกลบ>",
         // Swedish
-        "<media utelämnat>", "<Media har utelämnats>",
+        "<media utelämnat>",
+        "<Media har utelämnats>",
         // Norwegian
-        "<media utelatt>", "<Uten vedlegg>",
+        "<media utelatt>",
+        "<Uten vedlegg>",
         // Danish
-        "<medier udeladt>", "<Mediefil udeladt>",
+        "<medier udeladt>",
+        "<Mediefil udeladt>",
         // Finnish
-        "<media jätettiin pois>", "<Media jätetty pois>",
+        "<media jätettiin pois>",
+        "<Media jätetty pois>",
         // Czech
-        "<média vynechány>", "< Média vynechána >",
+        "<média vynechány>",
+        "< Média vynechána >",
         // Hungarian
-        "<média elhagyva>", "<Hiányzó médiafájl>",
+        "<média elhagyva>",
+        "<Hiányzó médiafájl>",
         // Romanian
         "<conținut media omis>",
         // Ukrainian
         "<медіа пропущено>",
         // Greek
-        "<αρχείο παραλήφθηκε>", "<Εξαίρεση πολυμέσων>",
+        "<αρχείο παραλήφθηκε>",
+        "<Εξαίρεση πολυμέσων>",
         // Bulgarian
         "<Без файл>",
         // Serbian
         "<медији су изостављени>",
         // Croatian
-        "<medijski zapis izostavljen>", "<Medijski zapis izostavljen>",
+        "<medijski zapis izostavljen>",
+        "<Medijski zapis izostavljen>",
         // Slovak
         "<Médiá vynechané>",
         // Slovenian
-        "<datoteke izpuščene>", "<Medij izpuščen>",
+        "<datoteke izpuščene>",
+        "<Medij izpuščen>",
         // Lithuanian
-        "<medija praleista>", "<Praleistas medijos turinys>",
+        "<medija praleista>",
+        "<Praleistas medijos turinys>",
         // Latvian
-        "<nav iekļauta multivide>", "<Bez multivides>",
+        "<nav iekļauta multivide>",
+        "<Bez multivides>",
         // Estonian
-        "<meedia välja jäetud>", "<Meedia ära jäetud>",
+        "<meedia välja jäetud>",
+        "<Meedia ära jäetud>",
         // Afrikaans
         "<media weggelaat>",
         // Swahili
-        "<media hazijajumuishwa>", "<Media imerukwa>",
+        "<media hazijajumuishwa>",
+        "<Media imerukwa>",
         // Filipino/Tagalog
-        "<ınalis ang media>", "<Walang kalakip na media>",
+        "<ınalis ang media>",
+        "<Walang kalakip na media>",
         // Malay
-        "<media dikecualikan>", "<Media disingkirkan>",
+        "<media dikecualikan>",
+        "<Media disingkirkan>",
         // Tamil
-        "<கோப்புகள் விடப்பட்டன>", "< ஊடகங்கள் நீக்கப்பட்டது >",
+        "<கோப்புகள் விடப்பட்டன>",
+        "< ஊடகங்கள் நீக்கப்பட்டது >",
         // Telugu
-        "<మీడియా విస్మరించబడింది>", "<మాధ్యమం విస్మరించబడింది>",
+        "<మీడియా విస్మరించబడింది>",
+        "<మాధ్యమం విస్మరించబడింది>",
         // Kannada
         "<ಮಾಧ್ಯಮ ಕೈಬಿಡಲಾಗಿದೆ>",
         // Malayalam
         "<മീഡിയ ഒഴിവാക്കി>",
         // Marathi
-        "<मीडिया वगळण्यात आला>", "<मीडिया वगळले>",
+        "<मीडिया वगळण्यात आला>",
+        "<मीडिया वगळले>",
         // Gujarati
-        "<મિડિયા છોડી મૂકાયું>", "<મીડિયા અવગણવામાં આવ્યા>",
+        "<મિડિયા છોડી મૂકાયું>",
+        "<મીડિયા અવગણવામાં આવ્યા>",
         // Punjabi
-        "<ਮੀਡੀਆ ਛੱਡਿਆ>", "<ਮੀਡੀਆ ਛਡਿਆ ਗਿਆ>",
+        "<ਮੀਡੀਆ ਛੱਡਿਆ>",
+        "<ਮੀਡੀਆ ਛਡਿਆ ਗਿਆ>",
         // Urdu
-        "<میڈیا چھوڑ دیا گیا>", "<میڈیا ہٹا دیا گیا>",
+        "<میڈیا چھوڑ دیا گیا>",
+        "<میڈیا ہٹا دیا گیا>",
         // Persian/Farsi
-        "<رسانه حذف شد>", "< پيوست نما/آهنگ حذف شد >",
+        "<رسانه حذف شد>",
+        "< پيوست نما/آهنگ حذف شد >",
         // Azerbaijani
-        "<media buraxıldı>", "<Media çıxarılmışdır>",
+        "<media buraxıldı>",
+        "<Media çıxarılmışdır>",
         // Kazakh
-        "<файлдар қосылмаған>", "<Файл қосылған жоқ>",
+        "<файлдар қосылмаған>",
+        "<Файл қосылған жоқ>",
         // Uzbek
         "<fayl o'tkazib yuborildi>",
         // Macedonian
-        "<без фајлови>", "<Без фајл>",
+        "<без фајлови>",
+        "<Без фајл>",
         // Albanian
-        "<media u hoq>", "<Media hequr>",
+        "<media u hoq>",
+        "<Media hequr>",
         // Catalan
-        "<fitxers multimèdia omesos>", "<Mitjans omesos>",
+        "<fitxers multimèdia omesos>",
+        "<Mitjans omesos>",
         // Lao
         "<ບໍ່ລວມມີເດຍ>",
     ];
-    return patterns.some(pattern => text.toLowerCase().includes(pattern.toLowerCase()));
+    return patterns.some((pattern) => text.toLowerCase().includes(pattern.toLowerCase()));
 }
 
 /**
@@ -511,12 +593,12 @@ function extractWords(text) {
         "<Это сообщение изменено>", // Russian
         "<ההודעה נערכה>", // Hebrew
     ];
-    
+
     let cleanedText = text;
     for (const pattern of editedPatterns) {
         cleanedText = cleanedText.replaceAll(new RegExp(String.raw`\s+${regexEscape(pattern)}`, "g"), "");
     }
-    
+
     const messageWords = cleanedText.split(/\s+/);
     const cleanWords = [];
 
@@ -635,7 +717,7 @@ function loadChatFile(filePath, extractFirstFileByExtension) {
  */
 function extractGroupName(fileName) {
     fileName = path.basename(fileName);
-    
+
     // Multilingual filename patterns
     const patterns = [
         // English
@@ -656,7 +738,7 @@ function extractGroupName(fileName) {
         // Hebrew
         /\u05e6['׳]?\u05d0\u05d8[_ ]WhatsApp[_ ]\u05e2\u05dd[_ ](.+?)(?:[_ ]\(\d+\))?\.(txt|zip)$/i,
     ];
-    
+
     for (const pattern of patterns) {
         const match = pattern.exec(fileName);
         if (match) {
@@ -664,7 +746,7 @@ function extractGroupName(fileName) {
             return match[1].replaceAll("_", " ").trim();
         }
     }
-    
+
     return "";
 }
 
@@ -1034,7 +1116,10 @@ function analyzeVcfFiles(zipFilePath, extractFilesByExtension, messages) {
         "contatti", // Italian
         "אנשי קשר", // Hebrew
     ];
-    const genericContactPattern = new RegExp(String.raw`^(\d+\s+)?(${contactKeywords.map(regexEscape).join("|")})\.vcf$`, "i");
+    const genericContactPattern = new RegExp(
+        String.raw`^(\d+\s+)?(${contactKeywords.map(regexEscape).join("|")})\.vcf$`,
+        "i"
+    );
     const genericFileOccurrences = new Map();
 
     for (const message of messages) {

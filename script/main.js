@@ -190,6 +190,12 @@ function addJsonSection(title, items, icon = "📊", key = "", isRanked = false)
 // Determine the format of the export file
 const CHAT_FORMAT = detectChatFormat(chat);
 
+// If chat format is undetectable, exit with error
+if (CHAT_FORMAT === null) {
+    console.error("Unable to detect chat format. Not all locales are supported. Try setting your phone's language to English and export the chat again.");
+    process.exit(1);
+}
+
 // Parse chat into messages
 const { messages, addedMembers, leftMembers, pinnedMessages } = parseChatMessages(
     chat,
