@@ -1092,7 +1092,9 @@ $domain = 'whatsappwrapped.demolab.com';
                 });
             });
 
-            return Array.from(senders).sort();
+            return Array.from(senders).sort((a, b) => a.localeCompare(b, undefined, {
+                sensitivity: 'base'
+            }));
         }
 
         // Load sender name mappings from localStorage
