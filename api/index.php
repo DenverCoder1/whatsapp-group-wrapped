@@ -552,7 +552,7 @@ $domain = 'whatsappwrapped.demolab.com';
                 <h2>📊 Results</h2>
                 <div>
                     <a href="#" class="download-btn" id="downloadImagesBtn" style="margin-right: 10px;">🖼️ Download Images</a>
-                    <a href="#" class="download-btn" id="downloadBtn">⬇️ Download Text</a>
+                    <button class="download-btn" id="copyTextBtn">📋 Copy Text</button>
                 </div>
             </div>
             <div class="gallery" id="gallery"></div>
@@ -590,11 +590,31 @@ $domain = 'whatsappwrapped.demolab.com';
         const resultsContent = document.getElementById('resultsContent');
         const error = document.getElementById('error');
         const submitBtn = document.getElementById('submitBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
+        const copyTextBtn = document.getElementById('copyTextBtn');
         const downloadImagesBtn = document.getElementById('downloadImagesBtn');
         const dropZone = document.getElementById('dropZone');
         let currentSvgDataUris = [];
         let currentMetadata = null;
+
+        // Copy text results to clipboard
+        copyTextBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                const textContent = '```\n' + resultsContent.textContent + '\n```';
+                await navigator.clipboard.writeText(textContent);
+                
+                // Show notification
+                const notification = document.getElementById('copyNotification');
+                notification.textContent = '✓ Text copied to clipboard!';
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text:', err);
+                alert('Failed to copy text to clipboard');
+            }
+        });
 
         // Download all images as PNG files in a zip
         downloadImagesBtn.addEventListener('click', async (e) => {
@@ -775,7 +795,6 @@ $domain = 'whatsappwrapped.demolab.com';
                         error.classList.add('active');
                     }
                     results.classList.add('active');
-                    downloadBtn.href = 'api.php?download=' + encodeURIComponent(data.filename);
                 } else {
                     error.textContent = '❌ Error: ' + data.error;
                     error.classList.add('active');
