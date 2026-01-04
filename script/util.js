@@ -38,7 +38,7 @@ function getMessageRegex(chatFormat) {
     } else if (chatFormat === 4) {
         return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
     }
-    return /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
+    return /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{1,2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
 }
 
 /**
@@ -768,14 +768,37 @@ function analyzeVcfFiles(zipFilePath, extractFilesByExtension, messages) {
     }
 
     // Find all messages that reference .vcf files and count each occurrence
-    const vcfPattern = /([^/\\]+\.vcf)/gi;
+    // Pattern matches filenames with word chars, spaces, dots, parens, ampersands, hyphens, apostrophes
+    const vcfPattern = /([\w\s.()&'\-]+\.vcf)/gi;
+
+    // Track generic contact filenames (e.g., "2 contacts.vcf") and skip if they appear multiple times
+    // We can't actually know if they are the same file or different files with the same generic name
+    const contactKeywords = [
+        "contacts",
+        "contatti", // Italian
+        "אנשי קשר", // Hebrew
+    ];
+    const genericContactPattern = new RegExp(`^(\\d+\\s+)?(${contactKeywords.map(regexEscape).join("|")})\\.vcf$`, "i");
+    const genericFileOccurrences = new Map();
 
     for (const message of messages) {
         if (!message.text) continue;
         const matches = message.text.matchAll(vcfPattern);
         for (const match of matches) {
-            const filename = match[1];
-            if (!vcfFileMap.has(filename)) continue;
+            const filename = match[1].trim();
+            if (!vcfFileMap.has(filename)) {
+                continue;
+            }
+
+            // Check if this is a generic contact filename
+            if (genericContactPattern.test(filename)) {
+                const count = (genericFileOccurrences.get(filename) || 0) + 1;
+                genericFileOccurrences.set(filename, count);
+                // Skip if this generic filename appears more than once
+                if (count > 1) {
+                    continue;
+                }
+            }
 
             const vcfFile = vcfFileMap.get(filename);
             const contacts = parseVcf(vcfFile.content);
