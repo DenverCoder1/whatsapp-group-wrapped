@@ -36,7 +36,7 @@ function getMessageRegex(chatFormat) {
     } else if (chatFormat === 3) {
         return /^(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
     } else if (chatFormat === 4) {
-        return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) - ([^:]+): /;
+        return /^(\d{1,2})\.(\d{1,2})\.(\d{4}), (\d{1,2}):(\d{2}) (?:- ([^:]+)(?::) )?/;
     }
     return /^(\d{1,2})\/(\d{1,2})\/(\d{2}), (\d{2}):(\d{2})(?: (AM|PM))? (?:- ([^:]+)(?::) )?/;
 }
@@ -114,6 +114,10 @@ function getSystemMessageType(message) {
                 "joined using this group's invite link",
                 `${message.sender} was added`,
                 "joined using a group link",
+                // Hebrew patterns
+                `צירף/ה את`, // added (Hebrew)
+                `הצטרף/ה לקבוצה`, // joined the group (Hebrew)
+                `נוספ/ה`, // was added (Hebrew)
             ]
                 .map(regexEscape)
                 .join("|")
@@ -125,16 +129,24 @@ function getSystemMessageType(message) {
 
     // Member leaves
     if (
-        new RegExp([`${message.sender} left`, `${message.sender} was removed`].map(regexEscape).join("|")).test(
-            message.text
-        ) ||
+        new RegExp(
+            [
+                `${message.sender} left`,
+                `${message.sender} was removed`,
+                // Hebrew patterns
+                `הוסר/ה`, // was removed (Hebrew)
+                `יצא/ה`, // left (Hebrew)
+            ]
+                .map(regexEscape)
+                .join("|")
+        ).test(message.text) ||
         (!message.sender && message.text.includes("left"))
     ) {
         return "member_left";
     }
 
     // Pinned messages
-    if (message.text.endsWith("pinned a message")) {
+    if (message.text.endsWith("pinned a message") || message.text.includes("הודעה הוצמדה על ידי")) {
         return "pinned_message";
     }
 
@@ -157,6 +169,19 @@ function getSystemMessageType(message) {
                 `${message.sender} created this group`,
                 `Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.`,
                 `${message.sender} pinned a message`,
+                // Hebrew patterns - TODO: verify if these are accurate
+                `שינה/תה את תמונת הקבוצה`, // changed group icon
+                `שינה/תה את נושא הקבוצה`, // changed group subject
+                `שינה/תה את תיאור הקבוצה`, // changed group description
+                `שינה/תה את הגדרות הקבוצה`, // changed group settings
+                `מחק/ה את תמונת הקבוצה`, // deleted group icon
+                `מחק/ה את תיאור הקבוצה`, // deleted group description
+                `יצר/ה את הקבוצה`, // created the group
+                `הודעות ושיחות מוצפנות מקצה לקצה`, // encryption message
+                `תיאור הקבוצה השתנה`, // group description changed
+                `החליף/ה את תמונת קבוצה`, // changed group picture
+                `הטיימר של ההודעות`, // message timer
+                `מצב הודעות זמניות`, // temporary messages mode
             ]
                 .map(regexEscape)
                 .join("|")
@@ -237,7 +262,16 @@ function isQuestion(text) {
  * @returns {boolean}
  */
 function hasMedia(text) {
-    return /<Media omitted>|image omitted|video omitted|sticker omitted|GIF omitted/.test(text);
+    const patterns = [
+        "<Media omitted>",
+        "image omitted",
+        "video omitted",
+        "sticker omitted",
+        "GIF omitted",
+        // Hebrew patterns
+        "<המדיה לא נכללה>", // Hebrew: <Media not included>
+    ];
+    return new RegExp(patterns.map(regexEscape).join("|")).test(text);
 }
 
 /**
@@ -273,7 +307,10 @@ function extractEmojis(text) {
  * @returns {[Array<string>, Array<string>]} - Array of all words and array of cleaned words
  */
 function extractWords(text) {
-    const messageWords = text.replaceAll(/\s+<This message was edited>/g, "").split(/\s+/);
+    const messageWords = text
+        .replaceAll(/\s+<This message was edited>/g, "")
+        .replaceAll(/\s+<ההודעה נערכה>/g, "") // Hebrew: message was edited
+        .split(/\s+/);
     const cleanWords = [];
 
     for (const word of messageWords) {
@@ -433,7 +470,10 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
             return;
         }
 
-        message.deleted = message.text === "null" || message.text === "This message was deleted";
+        message.deleted =
+            message.text === "null" ||
+            message.text === "This message was deleted" ||
+            message.text.replaceAll(/[\u200e\u200f]/g, "") === "הודעה זו נמחקה"; // Hebrew: This message was deleted
 
         messages.push(message);
     }
@@ -555,7 +595,12 @@ function calculateWordStats(messages, commonWords) {
     messages
         .filter((m) => !m.deleted)
         .forEach((message) => {
-            if (message.text.includes("omitted")) {
+            if (
+                [
+                    "omitted",
+                    "המדיה לא נכללה", // Hebrew: media omitted
+                ].some((pattern) => message.text.includes(pattern))
+            ) {
                 return;
             }
             const [messageWords, cleanWords] = extractWords(message.text);
@@ -713,25 +758,25 @@ function analyzeVcfFiles(zipFilePath, extractFilesByExtension, messages) {
 
     // Extract all VCF files from the ZIP
     const vcfFiles = extractFilesByExtension(zipFilePath, ".vcf");
-    
+
     // Create a map of VCF filenames for easy lookup
     const vcfFileMap = new Map();
     for (const vcfFile of vcfFiles) {
         // Get just the filename without path
-        const filename = vcfFile.filename.split('/').pop();
+        const filename = vcfFile.filename.split("/").pop();
         vcfFileMap.set(filename, vcfFile);
     }
 
     // Find all messages that reference .vcf files and count each occurrence
     const vcfPattern = /([^/\\]+\.vcf)/gi;
-    
+
     for (const message of messages) {
         if (!message.text) continue;
         const matches = message.text.matchAll(vcfPattern);
         for (const match of matches) {
             const filename = match[1];
             if (!vcfFileMap.has(filename)) continue;
-            
+
             const vcfFile = vcfFileMap.get(filename);
             const contacts = parseVcf(vcfFile.content);
 
@@ -810,7 +855,7 @@ function generateCsv(messages) {
  * @returns {Array<string>} - Array of banner lines
  */
 function createBanner(startDate, endDate, groupName, i18n = null) {
-    const welcome = i18n ? i18n.t('messages.welcomeToYour') : "Welcome to Your";
+    const welcome = i18n ? i18n.t("messages.welcomeToYour") : "Welcome to Your";
     const title = getWrappedTitle(startDate, endDate);
     const lines = [];
     const boxWidth = 4 + Math.max(welcome.length, title.length, groupName ? groupName.length : 0, 46);
