@@ -103,13 +103,13 @@ To add support for a new language:
 ## Example output
 
 ```
-╔══════════════════════════════════════════════════╗
-║                                                  ║
-║                 Welcome to Your                  ║
-║           WhatsApp Group Wrapped 2025            ║
-║              Pomegranate Community               ║
-║                                                  ║
-╚══════════════════════════════════════════════════╝
+====================================================
+                                                   
+                  Welcome to Your                  
+            WhatsApp Group Wrapped 2025            
+               Pomegranate Community               
+                                                   
+====================================================
 
 Top senders:
 Jeffrey Thomas - 158 messages

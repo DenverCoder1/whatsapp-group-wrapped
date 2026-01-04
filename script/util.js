@@ -1224,15 +1224,15 @@ function createBanner(startDate, endDate, groupName, i18n = null) {
     const lines = [];
     const boxWidth = 4 + Math.max(welcome.length, title.length, groupName ? groupName.length : 0, 46);
 
-    lines.push(`╔${"═".repeat(boxWidth)}╗`);
-    lines.push(`║${"".padStart(boxWidth)}║`);
-    lines.push(`║${welcome.padStart((boxWidth + welcome.length) / 2).padEnd(boxWidth)}║`);
-    lines.push(`║${title.padStart((boxWidth + title.length) / 2).padEnd(boxWidth)}║`);
+    lines.push(`${"=".repeat(boxWidth)}`);
+    lines.push(`${"".padStart(boxWidth)}`);
+    lines.push(`${welcome.padStart((boxWidth + welcome.length) / 2).padEnd(boxWidth)}`);
+    lines.push(`${title.padStart((boxWidth + title.length) / 2).padEnd(boxWidth)}`);
     if (groupName) {
-        lines.push(`║${groupName.padStart((boxWidth + groupName.length) / 2).padEnd(boxWidth)}║`);
+        lines.push(`${groupName.padStart((boxWidth + groupName.length) / 2).padEnd(boxWidth)}`);
     }
-    lines.push(`║${"".padStart(boxWidth)}║`);
-    lines.push(`╚${"═".repeat(boxWidth)}╝`);
+    lines.push(`${"".padStart(boxWidth)}`);
+    lines.push(`${"=".repeat(boxWidth)}`);
 
     return lines;
 }
