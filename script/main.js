@@ -40,8 +40,8 @@ const IMPORT_FILE = process.argv[2];
 // Optional arguments to override config: startDate, endDate, topCount, outputFormat, language
 let OUTPUT_FORMAT = 'text'; // default to text
 let LANGUAGE = 'en'; // default to English
-if (process.argv[3]) {
-    const startDate = process.argv[3];
+if (process.argv[3] !== undefined) {
+    const startDate = process.argv[3] || FILTERS.startDate.toISOString().split('T')[0];
     const endDate = process.argv[4] || FILTERS.endDate.toISOString().split('T')[0];
     const topCount = process.argv[5] ? Number.parseInt(process.argv[5], 10) : TOP_COUNT;
     const outputFormat = process.argv[6] || 'text';
