@@ -105,8 +105,8 @@ module.exports = {
 
     // Action verbs and descriptions
     actions: {
-        asked: 'chiesto',
-        sent: 'inviato',
+        asked: 'chieste',
+        sent: 'inviate',
         tagged: 'menzionato',
         shared: 'condiviso'
     },
