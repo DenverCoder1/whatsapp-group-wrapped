@@ -129,10 +129,6 @@ function extractFilesByExtension(zipFilePath, extension) {
     
     const entries = parseZipEntries(zipBuffer, extension);
     
-    if (entries.length === 0) {
-        throw new Error(`No ${extension} files found in ZIP archive`);
-    }
-    
     return entries;
 }
 
