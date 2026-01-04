@@ -28,12 +28,28 @@ const {
 const fs = require("node:fs");
 const path = require("node:path");
 
+// Create output directory
+const outputDir = process.env.VERCEL ? '/tmp/output' : path.join(__dirname, "..", "output");
+if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+}
+
 // Create a log file for errors and warnings
-const logStream = fs.createWriteStream(path.join(__dirname, "..", "output", "debug.log"), { flags: "a" });
+const logFilePath = path.join(outputDir, "debug.log");
+let logStream;
+try {
+    logStream = fs.createWriteStream(logFilePath, { flags: "a" });
+} catch (error) {
+    // If we can't create the log file, silently continue without logging
+    logStream = null;
+}
+
 function logMessage(level, ...args) {
-    const timestamp = new Date().toISOString();
-    const message = args.join(" ");
-    logStream.write(`[${timestamp}] [${level}] ${message}\n`);
+    if (logStream) {
+        const timestamp = new Date().toISOString();
+        const message = args.join(" ");
+        logStream.write(`[${timestamp}] [${level}] ${message}\n`);
+    }
 }
 
 // check if a parameter is passed to the script
@@ -67,11 +83,6 @@ if (process.argv[3] !== undefined) {
 // Initialize translations
 const i18n = new Translations(LANGUAGE);
 
-// create an output directory to store the results
-const outputDir = process.env.VERCEL ? '/tmp/output' : path.join(__dirname, "..", "output");
-if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-}
 
 // JSON output structure
 const jsonOutput = {
