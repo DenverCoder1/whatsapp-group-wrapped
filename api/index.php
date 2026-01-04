@@ -514,13 +514,18 @@ $domain = 'whatsappwrapped.demolab.com';
 
             <div class="options">
                 <div class="date-inputs">
+                    <?php
+                    // if the current month is December, set the year to the current year, otherwise set it to last year
+                    $currentYear = date('Y');
+                    $wrappedYear = (date('n') === '12') ? $currentYear : $currentYear - 1;
+                    ?>
                     <div class="option-group">
                         <label for="startDate">Start Date:</label>
-                        <input type="date" id="startDate" name="startDate" value="2025-01-01">
+                        <input type="date" id="startDate" name="startDate" value="<?= $wrappedYear; ?>-01-01">
                     </div>
                     <div class="option-group">
                         <label for="endDate">End Date:</label>
-                        <input type="date" id="endDate" name="endDate" value="2025-12-31">
+                        <input type="date" id="endDate" name="endDate" value="<?= $wrappedYear; ?>-12-31">
                     </div>
                 </div>
                 <div class="option-group">
