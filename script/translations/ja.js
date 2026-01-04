@@ -46,8 +46,8 @@ module.exports = {
         topSenders: 'トップ送信者',
         topMediaSenders: 'トップメディア送信者',
         topQuestionAskers: 'トップ質問者',
-        topTaggers: 'トップタグ付け者',
-        topTaggees: 'トップタグ付けられた人',
+        topTaggers: 'トップメンション送信者',
+        topTaggees: 'トップメンションされた人',
         messageStats: 'メッセージ統計',
         memberStats: 'メンバー統計',
         mostActiveHours: '最もアクティブな時間',
@@ -66,7 +66,7 @@ module.exports = {
         message: 'メッセージ',
         messageWithMedia: 'メディア付きメッセージ',
         question: '質問',
-        tag: 'タグ',
+        tag: 'メンション',
         time: '回',
         emoji: '絵文字'
     },
@@ -95,17 +95,17 @@ module.exports = {
 
     // Action verbs and descriptions
     actions: {
-        asked: 'した',
-        sent: 'した',
-        tagged: 'タグ付けされた',
-        shared: 'した'
+        asked: '',
+        sent: '',
+        tagged: 'メンションされた',
+        shared: ''
     },
 
     // Format strings (use {0}, {1}, etc. for placeholders)
     formats: {
         xMessages: '{count}{unit}',
-        taggedXTime: '{count}{unit}タグ付けされた',
-        sharedXTime: '{count}{unit}した',
+        taggedXTime: '{count}{unit}メンションされた',
+        sharedXTime: '{count}{unit}',
         topXMostShared: '最も共有された連絡先トップ{count}',
         hourFormat: '{hour}:00'
     },
@@ -114,6 +114,6 @@ module.exports = {
     messages: {
         totalMessagesWithMedia: 'メディア付きメッセージの合計',
         alsoKnownAs: '別名',
-        welcomeToYour: 'あなたの'
+        welcomeToYour: 'ようこそ'
     }
 };
