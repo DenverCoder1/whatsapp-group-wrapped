@@ -652,7 +652,7 @@ $domain = 'whatsappwrapped.demolab.com';
                     <label for="chatFile" class="file-label">
                         📁 Choose File
                     </label>
-                    <input type="file" id="chatFile" name="chatFile" accept=".txt,.zip" required>
+                    <input type="file" id="chatFile" name="chatFile" accept=".txt,.zip">
                 </div>
                 <div class="file-name" id="fileName">No file selected</div>
                 <p style="margin-top: 10px; color: #888; font-size: 14px;">
@@ -998,6 +998,13 @@ $domain = 'whatsappwrapped.demolab.com';
         // Form submission
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            // Check if file is uploaded
+            if (!fileInput.files || fileInput.files.length === 0) {
+                error.textContent = '❌ Please upload a WhatsApp chat file (.txt or .zip) before generating.';
+                error.classList.add('active');
+                return;
+            }
 
             // Hide previous results/errors
             results.classList.remove('active');
