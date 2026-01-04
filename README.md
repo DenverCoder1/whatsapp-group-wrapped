@@ -331,7 +331,6 @@ This ensures the chat export uses a date/time format that the parser recognizes.
 
 Upcoming features and improvements may include:
 
-- Support for assigning custom names to senders in the output
 - More detailed analytics and visualizations
 - More language support
 
