@@ -266,7 +266,7 @@ addJsonSection(
 );
 
 // Top media senders
-top = getTopEntries(mediaPerSender, TOP_COUNT);
+top = getTopEntries(mediaPerSender, TOP_COUNT).filter((a) => a[1] > 0);
 outputLine(`${i18n.t("sections.topMediaSenders")}:`);
 for (const [sender, count] of top) {
     const unit = i18n.pluralize(count, i18n.t("units.messageWithMedia"));
@@ -308,7 +308,8 @@ addJsonSection(
 );
 
 // Top taggers
-top = getTopEntries(tagsPerSender, TOP_COUNT);
+// Exclude senders with zero tags so zeros don't appear in top lists
+top = getTopEntries(tagsPerSender, TOP_COUNT).filter((a) => a[1] > 0);
 const totalTags = top.reduce((sum, [_, count]) => sum + count, 0);
 if (totalTags > 0) {
     outputLine(`${i18n.t("sections.topTaggers")}:`);
@@ -335,7 +336,8 @@ if (totalTags > 0) {
 
 // Top taggees
 const taggees = calculateTaggees(messages);
-top = getTopEntries(taggees, TOP_COUNT);
+// Exclude taggees with zero tags
+top = getTopEntries(taggees, TOP_COUNT).filter((a) => a[1] > 0);
 const totalTaggees = top.reduce((sum, [_, count]) => sum + count, 0);
 if (totalTaggees > 0) {
     outputLine(`${i18n.t("sections.topTaggees")}:`);
@@ -534,6 +536,7 @@ addJsonSection(i18n.t("sections.wordStats"), wordStats, "📝", "wordStats", fal
 // Top emoji senders, Most common emojis
 top = Object.entries(emojiPerSender)
     .sort((a, b) => b[1].length - a[1].length)
+    .filter((a) => a[1].length > 0)
     .slice(0, TOP_COUNT);
 outputLine(`${i18n.t("sections.topEmojiSenders")}:`);
 for (const [sender, emojiString] of top) {
