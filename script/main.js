@@ -516,7 +516,9 @@ for (const [word, count] of topUncommon) {
 }
 outputLine();
 addJsonSection(
-    i18n.t("sections.topUncommonWords"),
+    // Note: this is the "uncommon words" section, but for the SVG title,
+    // we will write "Top Words" because we aren't making a card for common words (it's less interesting)
+    i18n.t("sections.topWords"),
     topUncommon.map(([word, count]) => ({
         name: word,
         value: `${count} ${i18n.pluralize(count, i18n.t("units.time"))}`,
