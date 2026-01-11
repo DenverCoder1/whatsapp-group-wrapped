@@ -169,6 +169,7 @@ function getSystemMessageType(message) {
         // English
         `${message.sender} left`,
         `${message.sender} was removed`,
+        `${message.sender} removed`,
         // Spanish
         `${message.sender} salió`,
         `${message.sender} fue eliminado`,
@@ -194,7 +195,7 @@ function getSystemMessageType(message) {
 
     if (
         new RegExp(leavePatterns.map(regexEscape).join("|")).test(message.text) ||
-        (!message.sender && message.text.includes("left"))
+        (!message.sender && (message.text.includes("left") || message.text.includes("removed")))
     ) {
         return "member_left";
     }
@@ -812,7 +813,7 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
             .replaceAll(/[\u200e\u200f\u202a\u202b\u202c\u2068\u2069]/g, "")
             .trim()
             .replace(/\.+$/, ""); // Remove trailing period(s)
-        
+
         // Check if deleted by admin
         message.deletedByAdmin =
             message.text === "null" ||
@@ -832,7 +833,7 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
             /Это сообщение удалено администратором/i.test(normalizedText) ||
             // Hebrew
             /הודעה זו נמחקה על ידי המנהל/i.test(normalizedText);
-        
+
         // Check if deleted
         const deletedMessages = [
             // English
@@ -858,9 +859,9 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
             "Вы удалили это сообщение",
             // Hebrew
             "הודעה זו נמחקה",
-            "מחקת הודעה זו"
+            "מחקת הודעה זו",
         ];
-        
+
         message.deleted = message.deletedByAdmin || deletedMessages.includes(normalizedText);
 
         messages.push(message);
