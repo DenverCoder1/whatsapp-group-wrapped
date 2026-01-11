@@ -48,6 +48,7 @@ module.exports = {
         topSenders: 'Top senders',
         topMediaSenders: 'Top media senders',
         topQuestionAskers: 'Top question askers',
+        topPollCreators: 'Top Poll Creators',
         topTaggers: 'Top taggers',
         topTaggees: 'Top taggees',
         messageStats: 'Message Stats',
@@ -68,6 +69,7 @@ module.exports = {
         message: 'message',
         messageWithMedia: 'message with media',
         question: 'question',
+        poll: 'poll',
         tag: 'tag',
         time: 'time',
         emoji: 'emoji'
@@ -100,6 +102,7 @@ module.exports = {
     // Action verbs and descriptions
     actions: {
         asked: 'asked',
+        created: 'created',
         sent: 'sent',
         tagged: 'tagged',
         shared: 'shared'

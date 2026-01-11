@@ -239,7 +239,7 @@ bannerLines.forEach((line) => outputLine(line));
 outputLine();
 
 // Enrich messages with additional metadata
-const { mediaPerSender, questionsPerSender, tagsPerSender, emojiPerSender, emojis, totalMedia } =
+const { mediaPerSender, questionsPerSender, tagsPerSender, pollsPerSender, emojiPerSender, emojis, totalMedia } =
     enrichMessages(messages);
 
 // Top message senders
@@ -306,6 +306,32 @@ addJsonSection(
     "topQuestionAskers",
     true
 );
+
+// Top poll creators
+top = getTopEntries(pollsPerSender, TOP_COUNT).filter((a) => a[1] > 0);
+const totalPolls = top.reduce((sum, [_, count]) => sum + count, 0);
+if (totalPolls > 0) {
+    outputLine(`${i18n.t("sections.topPollCreators")}:`);
+    for (const [sender, count] of top) {
+        const unit = i18n.pluralize(count, i18n.t("units.poll"));
+        const verb = i18n.conjugateVerb(count, i18n.t("actions.created"));
+        outputLine(`${sender} - ${verb} ${count} ${unit}`);
+    }
+    outputLine();
+    addJsonSection(
+        i18n.t("sections.topPollCreators"),
+        top.map(([name, count]) => ({
+            name,
+            value: `${i18n.conjugateVerb(count, i18n.t("actions.created"))} ${count} ${i18n.pluralize(
+                count,
+                i18n.t("units.poll")
+            )}`,
+        })),
+        "📊",
+        "topPollCreators",
+        true
+    );
+}
 
 // Top taggers
 // Exclude senders with zero tags so zeros don't appear in top lists
