@@ -350,14 +350,14 @@ function isQuestion(text) {
         "has",
         "have",
         "had",
-        "poll:",
     ];
 
     return (
         /\?(?:\s|$)/.test(text) ||
         new RegExp(questionPhrases.map(regexEscape).join("|")).test(text) ||
         questionIfFirstWord.some((w) => new RegExp(String.raw`^${w}\s`, "i").test(text)) ||
-        ["who", "what", "where", "when", "why", "how"].includes(text.toLowerCase())
+        ["who", "what", "where", "when", "why", "how"].includes(text.toLowerCase()) ||
+        isPoll(text)
     );
 }
 
@@ -610,15 +610,6 @@ function extractEmojis(text) {
  * @returns {[Array<string>, Array<string>]} - Array of all words and array of cleaned words
  */
 function extractWords(text) {
-    // if this is a POLL message, remove POLL:, OPTION:, (x vote/s) indicators
-    if (/^POLL:/i.test(text)) {
-        text = text
-            .replaceAll("POLL:", "")
-            .replaceAll("OPTION:", "")
-            .replaceAll(/\(\d+ votes?\)/g, "")
-            .trim();
-    }
-
     // Remove edited message indicators in multiple languages
     const editedPatterns = [
         "<This message was edited>",
@@ -638,6 +629,15 @@ function extractWords(text) {
 
     // remove tags
     cleanedText = cleanedText.replaceAll(/@(?:\d{10,}|\u2068[^\u2069]+\u2069)/g, "");
+
+    // if this is a POLL message, remove POLL:, OPTION:, (x vote/s) indicators
+    if (isPoll(cleanedText)) {
+        cleanedText = cleanedText
+            .replaceAll("POLL:", "")
+            .replaceAll("OPTION:", "")
+            .replaceAll(/\(\d+ votes?\)/g, "")
+            .trim();
+    }
 
     const messageWords = cleanedText.split(/\s+/);
     const cleanWords = [];

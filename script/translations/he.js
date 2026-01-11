@@ -15,6 +15,7 @@ module.exports = {
             'הודעה': 'הודעות',
             'הודעה עם מדיה': 'הודעות עם מדיה',
             'שאלה': 'שאלות',
+            'סקר': 'סקרים',
             'תיוג': 'תיוגים',
             'פעם': 'פעמים',
             'אימוג\'י': 'אימוג\'י'
@@ -34,6 +35,7 @@ module.exports = {
     conjugateVerb: (count, verb) => {
         const verbForms = {
             'נשאל': { singular: 'נשאלה', plural: 'נשאלו' },
+            'נוצר': { singular: 'נוצר', plural: 'נוצרו' },
             'נשלח': { singular: 'נשלח', plural: 'נשלחו' },
             'תויג': { singular: 'תויג', plural: 'תויגו' },
             'שותף': { singular: 'שותף', plural: 'שותפו' }
