@@ -564,7 +564,17 @@ function hasMedia(text) {
         // Lao
         "<ບໍ່ລວມມີເດຍ>",
     ];
+
     return patterns.some((pattern) => text.toLowerCase().includes(pattern.toLowerCase()));
+}
+
+/**
+ * Check if a message is a poll
+ * @param {string} text - Message text
+ * @returns {boolean}
+ */
+function isPoll(text) {
+    return /\bPOLL:/.test(text);
 }
 
 /**
@@ -600,6 +610,15 @@ function extractEmojis(text) {
  * @returns {[Array<string>, Array<string>]} - Array of all words and array of cleaned words
  */
 function extractWords(text) {
+    // if this is a POLL message, remove POLL:, OPTION:, (x vote/s) indicators
+    if (/^POLL:/i.test(text)) {
+        text = text
+            .replaceAll("POLL:", "")
+            .replaceAll("OPTION:", "")
+            .replaceAll(/\(\d+ votes?\)/g, "")
+            .trim();
+    }
+
     // Remove edited message indicators in multiple languages
     const editedPatterns = [
         "<This message was edited>",
@@ -912,6 +931,7 @@ function enrichMessages(messages) {
     const mediaPerSender = {};
     const questionsPerSender = {};
     const tagsPerSender = {};
+    const pollsPerSender = {};
     const emojiPerSender = {};
     const emojis = {};
     let totalMedia = 0;
@@ -922,6 +942,7 @@ function enrichMessages(messages) {
             mediaPerSender[message.sender] = 0;
             questionsPerSender[message.sender] = 0;
             tagsPerSender[message.sender] = 0;
+            pollsPerSender[message.sender] = 0;
             emojiPerSender[message.sender] = "";
         }
 
@@ -939,6 +960,13 @@ function enrichMessages(messages) {
             questionsPerSender[message.sender]++;
         }
         messages[i].question = messageIsQuestion;
+
+        // Check for polls
+        const messageIsPoll = isPoll(message.text);
+        if (messageIsPoll) {
+            pollsPerSender[message.sender]++;
+        }
+        messages[i].poll = messageIsPoll;
 
         // Extract tags
         const tags = extractTags(message.text);
@@ -963,6 +991,7 @@ function enrichMessages(messages) {
         mediaPerSender,
         questionsPerSender,
         tagsPerSender,
+        pollsPerSender,
         emojiPerSender,
         emojis,
         totalMedia,
@@ -1292,6 +1321,7 @@ module.exports = {
     getSystemMessageType,
     isQuestion,
     hasMedia,
+    isPoll,
     extractTags,
     extractEmojis,
     extractWords,

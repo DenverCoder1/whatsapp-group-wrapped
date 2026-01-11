@@ -76,6 +76,7 @@ module.exports = {
         topSenders: 'השולחים המובילים',
         topMediaSenders: 'שולחי המדיה המובילים',
         topQuestionAskers: 'שואלי השאלות המובילים',
+        topPollCreators: 'יוצרי הסקרים המובילים',
         topTaggers: 'המתייגים המובילים',
         topTaggees: 'המתוייגים המובילים',
         messageStats: 'סטטיסטיקות הודעות',
@@ -96,6 +97,7 @@ module.exports = {
         message: 'הודעה',
         messageWithMedia: 'הודעה עם מדיה',
         question: 'שאלה',
+        poll: 'סקר',
         tag: 'תיוג',
         time: 'פעם',
         emoji: 'אימוג\'י'
@@ -123,6 +125,7 @@ module.exports = {
     // Action verbs (base forms for conjugation)
     actions: {
         asked: 'נשאל',      // to be asked
+        created: 'נוצר',    // to be created
         sent: 'נשלח',       // to be sent
         tagged: 'תויג',     // to be tagged
         shared: 'שותף'      // to be shared
