@@ -617,6 +617,9 @@ function extractWords(text) {
         cleanedText = cleanedText.replaceAll(new RegExp(String.raw`\s+${regexEscape(pattern)}`, "g"), "");
     }
 
+    // remove tags
+    cleanedText = cleanedText.replaceAll(/@(?:\d{10,}|\u2068[^\u2069]+\u2069)/g, "");
+
     const messageWords = cleanedText.split(/\s+/);
     const cleanWords = [];
 
