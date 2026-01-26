@@ -541,12 +541,17 @@ for (const [word, count] of topUncommon) {
     outputLine(`${word} - ${count} ${unit}`);
 }
 outputLine();
+function formatWord(word) {
+    // Make proper case for display
+    if (word.length === 0) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
 addJsonSection(
     // Note: this is the "uncommon words" section, but for the SVG title,
     // we will write "Top Words" because we aren't making a card for common words (it's less interesting)
     i18n.t("sections.topWords"),
     topUncommon.map(([word, count]) => ({
-        name: word,
+        name: formatWord(word),
         value: `${count} ${i18n.pluralize(count, i18n.t("units.time"))}`,
     })),
     "💬",
