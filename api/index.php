@@ -1307,100 +1307,103 @@ $domain = 'whatsappwrapped.demolab.com';
             // Phone portrait dimensions
             const width = 600;
             const height = width * (16 / 10);
-            const headerHeight = 220;
+            const headerHeight = 260; // Adjusted for group name
             const itemHeight = 120;
             const padding = 50;
             const maxItems = Math.min(section.items.length, 5);
 
-            // Each card gets a unique bright color - rotate through all colors
-            const colorSchemes = [{
-                    bg: '#FF6B9D',
-                    text: '#1a1a1a'
-                }, // Bright pink
-                {
-                    bg: '#4ECDC4',
-                    text: '#1a1a1a'
-                }, // Turquoise
-                {
-                    bg: '#FFD93D',
-                    text: '#1a1a1a'
-                }, // Bright yellow
-                {
-                    bg: '#FF8C42',
-                    text: '#1a1a1a'
-                }, // Bright orange
-                {
-                    bg: '#A8E6CF',
-                    text: '#1a1a1a'
-                }, // Pastel green
-                {
-                    bg: '#BB9AF7',
-                    text: '#1a1a1a'
-                }, // Lavender
-                {
-                    bg: '#FF6B6B',
-                    text: '#1a1a1a'
-                }, // Coral red
-                {
-                    bg: '#FFB6C1',
-                    text: '#1a1a1a'
-                }, // Light pink
-                {
-                    bg: '#87CEEB',
-                    text: '#1a1a1a'
-                }, // Sky blue
-                {
-                    bg: '#98D8C8',
-                    text: '#1a1a1a'
-                }, // Seafoam
-                {
-                    bg: '#F7DC6F',
-                    text: '#1a1a1a'
-                }, // Golden yellow
-                {
-                    bg: '#F6A6B2',
-                    text: '#1a1a1a'
-                }, // Soft rose
-                {
-                    bg: '#95E1D3',
-                    text: '#1a1a1a'
-                }, // Mint green
-                {
-                    bg: '#C3B1E1',
-                    text: '#1a1a1a'
-                }, // Light purple
-                {
-                    bg: '#FFA07A',
-                    text: '#1a1a1a'
-                } // Light salmon
+            // Vibrant gradient color schemes with better contrast
+            const colorSchemes = [
+                { gradient: 'linear-gradient(135deg, #FF6B9D 0%, #FF1744 100%)', text: '#ffffff' }, // Pink gradient
+                { gradient: 'linear-gradient(135deg, #FF8C42 0%, #FF6F00 100%)', text: '#ffffff' }, // Orange gradient
+                { gradient: 'linear-gradient(135deg, #FFD93D 0%, #FFA000 100%)', text: '#1a1a1a' }, // Yellow gradient
+                { gradient: 'linear-gradient(135deg, #A8E6CF 0%, #00C853 100%)', text: '#1a1a1a' }, // Green gradient
+                { gradient: 'linear-gradient(135deg, #FF6B6B 0%, #D50000 100%)', text: '#ffffff' }, // Red gradient
+                { gradient: 'linear-gradient(135deg, #BB9AF7 0%, #6200EA 100%)', text: '#ffffff' }, // Purple gradient
+                { gradient: 'linear-gradient(135deg, #87CEEB 0%, #0091EA 100%)', text: '#ffffff' }, // Blue gradient
+                { gradient: 'linear-gradient(135deg, #98D8C8 0%, #00BFA5 100%)', text: '#1a1a1a' }, // Teal gradient
+                { gradient: 'linear-gradient(135deg, #F7DC6F 0%, #F9A825 100%)', text: '#1a1a1a' }, // Gold gradient
+                { gradient: 'linear-gradient(135deg, #FFB6C1 0%, #FF4081 100%)', text: '#ffffff' }, // Rose gradient
+                { gradient: 'linear-gradient(135deg, #C3B1E1 0%, #7C4DFF 100%)', text: '#ffffff' }, // Lavender gradient
+                { gradient: 'linear-gradient(135deg, #95E1D3 0%, #00E676 100%)', text: '#1a1a1a' }, // Mint gradient
+                { gradient: 'linear-gradient(135deg, #F6A6B2 0%, #F06292 100%)', text: '#ffffff' }, // Soft rose gradient
+                { gradient: 'linear-gradient(135deg, #FFA07A 0%, #FF6E40 100%)', text: '#ffffff' }, // Salmon gradient
+                { gradient: 'linear-gradient(135deg, #FFE4E1 0%, #FFAB91 100%)', text: '#1a1a1a' }  // Peach gradient
             ];
 
-            // Use a different color for each section based on its index
-            // We'll need to pass the section index, so use title hash as fallback
             const colorIndex = sectionIndex % colorSchemes.length;
             const colors = colorSchemes[colorIndex];
 
+            // Fruit emojis for decoration
+            const fruits = ['🍎', '🍇', '🍉', '🍒', '🍓', '🍊', '🍋', '🍌', '🍍', '🥝', '🍑', '🍈'];
+            
+            // Generate random fruit positions (seeded by section index for consistency)
+            function getRandomFruits(seed) {
+                const random = (s) => {
+                    const x = Math.sin(s) * 10000;
+                    return x - Math.floor(x);
+                };
+                
+                const fruitPositions = [];
+                for (let i = 0; i < 8; i++) {
+                    fruitPositions.push({
+                        fruit: fruits[(seed + i) % fruits.length],
+                        x: random(seed + i * 2) * (width - 80) + 40,
+                        y: random(seed + i * 3) * (height - 100) + 50,
+                        size: 30 + random(seed + i * 4) * 20,
+                        opacity: 0.12 + random(seed + i * 5) * 0.08
+                    });
+                }
+                return fruitPositions;
+            }
+
             let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
 
-            // Solid background
-            svg += `<rect width="${width}" height="${height}" fill="${colors.bg}" rx="0"/>`;
+            // Define gradient
+            const gradientId = `gradient-${sectionIndex}`;
+            svg += `<defs>`;
+            // Extract colors from gradient string
+            const gradientMatch = colors.gradient.match(/#[0-9A-F]{6}/gi);
+            if (gradientMatch && gradientMatch.length >= 2) {
+                svg += `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">`;
+                svg += `<stop offset="0%" style="stop-color:${gradientMatch[0]};stop-opacity:1" />`;
+                svg += `<stop offset="100%" style="stop-color:${gradientMatch[1]};stop-opacity:1" />`;
+                svg += `</linearGradient>`;
+            }
+            svg += `</defs>`;
 
-            // Header section with icon and title - bigger and more spaced out
-            svg += `<text x="${width / 2}" y="120" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.icon)}</text>`;
+            // Gradient background
+            svg += `<rect width="${width}" height="${height}" fill="url(#${gradientId})" rx="0"/>`;
+
+            // Background fruit decorations (subtle and elegant)
+            const fruitDecorations = getRandomFruits(sectionIndex + 100);
+            fruitDecorations.forEach(fruit => {
+                svg += `<text x="${fruit.x}" y="${fruit.y}" font-family="Arial, sans-serif" font-size="${fruit.size}" opacity="${fruit.opacity}">${escapeXml(fruit.fruit)}</text>`;
+            });
+
+            // Group name at top with shadow for better contrast
+            svg += `<text x="${width / 2}" y="50" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="${colors.text}" text-anchor="middle" style="text-shadow: 0 2px 8px rgba(0,0,0,0.3);">JLM Poms People</text>`;
+            
+            // Fruit emojis next to group name
+            svg += `<text x="80" y="50" font-family="Arial, sans-serif" font-size="22">🍎</text>`;
+            svg += `<text x="${width - 80}" y="50" font-family="Arial, sans-serif" font-size="22">🍓</text>`;
+
+            // Header section with icon and title
+            svg += `<text x="${width / 2}" y="130" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="${colors.text}" text-anchor="middle" style="text-shadow: 0 2px 8px rgba(0,0,0,0.2);">${escapeXml(section.icon)}</text>`;
 
             // Title - use foreignObject for proper RTL support
             if (isRTL) {
-                svg += `<foreignObject x="0" y="150" width="${width}" height="60">
+                svg += `<foreignObject x="0" y="160" width="${width}" height="60">
                     <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <div style="font-family: Arial, sans-serif; font-size: 32px; font-weight: bold; color: ${colors.text}; text-align: center; direction: rtl;">${escapeXml(section.title)}</div>
+                        <div style="font-family: Arial, sans-serif; font-size: 32px; font-weight: bold; color: ${colors.text}; text-align: center; direction: rtl; text-shadow: 0 2px 8px rgba(0,0,0,0.2);">${escapeXml(section.title)}</div>
                     </div>
                 </foreignObject>`;
             } else {
-                svg += `<text x="${width / 2}" y="190" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="${colors.text}" text-anchor="middle">${escapeXml(section.title)}</text>`;
+                svg += `<text x="${width / 2}" y="200" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="${colors.text}" text-anchor="middle" style="text-shadow: 0 2px 8px rgba(0,0,0,0.2);">${escapeXml(section.title)}</text>`;
             }
 
             // Items - bigger text and more spacing
-            let startY = headerHeight + padding + 25;
+            let startY = headerHeight + padding + 25 - 40;
             const showNumbers = section.isRanked || false;
             section.items.slice(0, maxItems).forEach((item, index) => {
                 const itemY = startY + (index * itemHeight);
@@ -1408,7 +1411,7 @@ $domain = 'whatsappwrapped.demolab.com';
                 // Rank circle with dark background - bigger (only for "Top" lists)
                 if (showNumbers) {
                     const circleX = isRTL ? width - padding - 25 : padding + 25;
-                    svg += `<circle cx="${circleX}" cy="${itemY}" r="32" fill="rgba(0,0,0,0.15)"/>`;
+                    svg += `<circle cx="${circleX}" cy="${itemY}" r="32" fill="rgba(0,0,0,0.25)"/>`;
                     svg += `<text x="${circleX}" y="${itemY + 9}" font-family="Arial, sans-serif" font-size="30" font-weight="bold" fill="${colors.text}" text-anchor="middle">${index + 1}</text>`;
                 }
 
@@ -1430,26 +1433,33 @@ $domain = 'whatsappwrapped.demolab.com';
                     // Name on first line
                     svg += `<foreignObject x="50" y="${itemY - 35}" width="${textWidth}" height="35">
                         <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end;">
-                            <div style="font-family: Arial, sans-serif; font-size: 30px; font-weight: 600; color: ${colors.text}; direction: rtl; text-align: right; padding-right: 10px;">${escapeXml(displayName)}</div>
+                            <div style="font-family: Arial, sans-serif; font-size: 30px; font-weight: 700; color: ${colors.text}; direction: rtl; text-align: right; padding-right: 10px; text-shadow: 0 1px 4px rgba(0,0,0,0.2);">${escapeXml(displayName)}</div>
                         </div>
                     </foreignObject>`;
 
                     // Value on second line
                     svg += `<foreignObject x="50" y="${itemY + 5}" width="${textWidth}" height="35">
                         <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end;">
-                            <div style="font-family: Arial, sans-serif; font-size: 28px; font-weight: bold; color: ${colors.text}; opacity: 0.8; direction: rtl; text-align: right; padding-right: 10px;">${escapeXml(item.value)}</div>
+                            <div style="font-family: Arial, sans-serif; font-size: 28px; font-weight: bold; color: ${colors.text}; opacity: 0.9; direction: rtl; text-align: right; padding-right: 10px; text-shadow: 0 1px 4px rgba(0,0,0,0.2);">${escapeXml(item.value)}</div>
                         </div>
                     </foreignObject>`;
                 } else {
                     // Name on first line
-                    svg += `<text x="${nameX}" y="${itemY - 10}" font-family="Arial, sans-serif" font-size="30" font-weight="600" fill="${colors.text}" text-anchor="${textAnchor}">${escapeXml(displayName)}</text>`;
+                    svg += `<text x="${nameX}" y="${itemY - 10}" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="${colors.text}" text-anchor="${textAnchor}" style="text-shadow: 0 1px 4px rgba(0,0,0,0.2);">${escapeXml(displayName)}</text>`;
                     // Value on second line
-                    svg += `<text x="${nameX}" y="${itemY + 32}" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="${colors.text}" opacity="0.8" text-anchor="${textAnchor}">${escapeXml(item.value)}</text>`;
+                    svg += `<text x="${nameX}" y="${itemY + 32}" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="${colors.text}" opacity="0.9" text-anchor="${textAnchor}" style="text-shadow: 0 1px 4px rgba(0,0,0,0.2);">${escapeXml(item.value)}</text>`;
                 }
             });
 
-            // Footer decoration
-            svg += `<rect x="0" y="${height - 80}" width="${width}" height="80" fill="rgba(0,0,0,0.1)"/>`;
+            // Footer decoration with fruit border
+            svg += `<rect x="0" y="${height - 80}" width="${width}" height="80" fill="rgba(0,0,0,0.15)"/>`;
+            
+            // Small fruits along the footer
+            const footerFruits = ['🍎', '🍇', '🍉', '🍒', '🍓'];
+            footerFruits.forEach((fruit, i) => {
+                const x = (width / (footerFruits.length + 1)) * (i + 1);
+                svg += `<text x="${x}" y="${height - 85}" font-family="Arial, sans-serif" font-size="20" opacity="0.35">${fruit}</text>`;
+            });
 
             // WhatsApp Wrapped title with year/dates
             let wrappedTitle = 'WhatsApp Wrapped';
@@ -1477,8 +1487,8 @@ $domain = 'whatsappwrapped.demolab.com';
                 }
             }
 
-            svg += `<text x="${width / 2}" y="${height - 45}" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed">${escapeXml(wrappedTitle)}</text>`;
-            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" opacity="0.8"><?= $domain ?></text>`;
+            svg += `<text x="${width / 2}" y="${height - 45}" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" style="text-shadow: 0 2px 8px rgba(0,0,0,0.3);">${escapeXml(wrappedTitle)}</text>`;
+            svg += `<text x="${width / 2}" y="${height - 20}" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="${colors.text}" text-anchor="middle" direction="ltr" unicode-bidi="embed" opacity="0.9" style="text-shadow: 0 1px 4px rgba(0,0,0,0.2);"><?= $domain ?></text>`;
 
             svg += `</svg>`;
 
