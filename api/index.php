@@ -1068,7 +1068,9 @@ $domain = 'whatsappwrapped.demolab.com';
                 'topQuestionAskers',
                 'topTaggers',
                 'topTaggees',
-                'topEmojiSenders'
+                'topEmojiSenders',
+                'topPollCreators',
+                'topPollVoters'
             ];
 
             jsonData.sections.forEach(section => {
