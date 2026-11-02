@@ -13,10 +13,18 @@ if (isset($_GET['download'])) {
     $filepath = '/tmp/output/' . $filename;
 
     if (file_exists($filepath)) {
-        header('Content-Type: text/plain');
+        // Determine content type based on file extension
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $contentType = $extension === 'json' ? 'application/json' : 'text/plain';
+        
+        header('Content-Type: ' . $contentType);
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Content-Length: ' . filesize($filepath));
         readfile($filepath);
+        
+        // Note: Files are kept in /tmp which Vercel cleans up automatically
+        // For local development, you may want to uncomment the line below:
+        // unlink($filepath);
         exit;
     } else {
         http_response_code(404);
@@ -32,8 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Validate file upload
-if (!isset($_FILES['chatFile'])) {
+// Check if file upload failed due to size limits before anything else
+if (!isset($_FILES['chatFile']) || ($_FILES['chatFile']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+    // Check if POST data was received but file wasn't - indicates size limit exceeded
+    if ($_SERVER['CONTENT_LENGTH'] > 0 && empty($_FILES)) {
+        $sizeInMB = round($_SERVER['CONTENT_LENGTH'] / 1048576, 2);
+        $limitInMB = round(min(
+            intval(str_replace('M', '', ini_get('post_max_size'))),
+            intval(str_replace('M', '', ini_get('upload_max_filesize')))
+        ));
+        echo json_encode([
+            'success' => false,
+            'error' => "File size ({$sizeInMB}MB) exceeds the server limit ({$limitInMB}MB). Note: Vercel Hobby plan has a 4.5MB limit. Consider using Vercel Pro or processing locally for larger files."
+        ]);
+        exit;
+    }
     echo json_encode(['success' => false, 'error' => 'No file uploaded']);
     exit;
 }
@@ -197,27 +218,45 @@ if ($returnCode !== 0 || !file_exists($jsonOutputPath)) {
     exit;
 }
 
-// Read the JSON results
-$jsonResults = file_get_contents($jsonOutputPath);
-$parsedResults = json_decode($jsonResults, true);
-
-// Read the text results for download
-$textResults = file_exists($outputFilePath) ? file_get_contents($outputFilePath) : '';
-
-// Clean up output files after reading
-if (file_exists($jsonOutputPath)) {
-    unlink($jsonOutputPath);
-}
-if (file_exists($outputFilePath)) {
-    unlink($outputFilePath);
+// Verify results were created
+if (!file_exists($jsonOutputPath)) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'Processing failed: No output generated'
+    ]);
+    exit;
 }
 
-// Return success response with both formats
+// Get file sizes for reference
+$jsonSize = filesize($jsonOutputPath);
+$textSize = file_exists($outputFilePath) ? filesize($outputFilePath) : 0;
+
+// Generate download URLs
+$baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
+$jsonDownloadUrl = $baseUrl . '/api.php?download=results_' . $uniqueId . '.json';
+$textDownloadUrl = $baseUrl . '/api.php?download=' . $outputFileName;
+
+// For small results (< 500KB), include inline. Otherwise, client must download.
+$inlineResults = null;
+if ($jsonSize < 500000) {
+    $jsonResults = file_get_contents($jsonOutputPath);
+    $inlineResults = json_decode($jsonResults, true);
+}
+
+// Return success response with download URLs
 echo json_encode([
     'success' => true,
-    'output' => $textResults,
-    'json' => $parsedResults,
-    'filename' => $outputFileName
+    'downloadUrls' => [
+        'json' => $jsonDownloadUrl,
+        'text' => $textDownloadUrl
+    ],
+    'fileSizes' => [
+        'json' => $jsonSize,
+        'text' => $textSize
+    ],
+    'filename' => $outputFileName,
+    'results' => $inlineResults,
+    'message' => $inlineResults === null ? 'Results too large for inline response. Use download URLs.' : 'Results included inline.'
 ]);
 
 /**

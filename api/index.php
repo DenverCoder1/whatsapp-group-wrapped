@@ -1034,8 +1034,8 @@ $domain = 'whatsappwrapped.demolab.com';
                 if (data.success) {
                     resultsContent.textContent = data.output;
                     // Generate gallery from JSON data
-                    if (data.json && data.json.sections) {
-                        generateGalleryFromJson(data.json);
+                    if (data.results && data.results.sections) {
+                        generateGalleryFromJson(data.results);
                     } else {
                         console.error('No JSON data available');
                         error.textContent = '❌ Error: No structured data available';

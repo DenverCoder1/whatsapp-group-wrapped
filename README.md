@@ -27,7 +27,20 @@ php -S localhost:8000 -t api -c api/php.ini
 4. Click "Generate Wrapped" to see your stats
 5. Download the results if desired
 
-**Note for large files:** If you encounter upload errors with large chat exports, use the command with `-c php.ini` as shown above. The included `php.ini` file increases upload limits to 100MB and allows longer processing times.
+**Note for large files:** If you encounter upload errors with large chat exports, use the command with `-c php.ini` as shown above. The included `php.ini` file increases upload limits to 50MB and allows longer processing times.
+
+#### Deployment Considerations
+
+When deploying to Vercel or similar serverless platforms:
+
+- **Vercel Hobby Plan**: Has a 4.5MB request body limit. Files larger than this will fail to upload.
+- **Vercel Pro Plan**: Supports larger uploads (up to 100MB with configuration).
+- **Large Files**: For chat exports larger than 4.5MB on Vercel Hobby, consider:
+  - Using the command line interface locally
+  - Upgrading to Vercel Pro
+  - Using a different hosting platform with higher limits
+
+The API automatically returns download URLs for large results to avoid response size limits. Small results (< 500KB) are included inline for convenience.
 
 ### Command Line (Node.js)
 
