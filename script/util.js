@@ -886,6 +886,24 @@ function parseChatMessages(chat, chatFormat, tagToName, filters) {
 
         message.deleted = message.deletedByAdmin || deletedMessages.includes(normalizedText);
 
+        // only include messages from Ariel Blumstein
+        if (message.sender !== 'Ariel Blumstein') {
+            return;
+        }
+
+        // only include messages that are standalone tags with no text before or after (when stripped are in format @⁨Rachel Seigel⁩)
+        if (!/^@\u2068?.+\u2069?$/.test(message.text.trim())) {
+            return;
+        }
+        // make sure it's not multiline with other text
+        if (message.text.includes("\n")) {
+            return;
+        }
+        // make sure \u2068 only appears one time in the message text
+        if ((message.text.match(/\u2068/g) || []).length > 1) {
+            return;
+        }
+
         messages.push(message);
     }
 
